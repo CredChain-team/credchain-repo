@@ -126,13 +126,14 @@ Foresaw computers handling more than pure calculation.</textarea>
 <script>
 async function generate() {
   const btn = document.getElementById('go');
+  const val = id => document.getElementById(id).value;
   const lines = v => v.split('\\n').map(s => s.trim()).filter(Boolean);
   const csv   = v => v.split(',').map(s => s.trim()).filter(Boolean);
 
   const payload = {
-    name: name.value, title: title.value, summary: summary.value,
-    email: email.value, phone: phone.value, location: location.value,
-    skills: csv(skills.value), achievements: lines(achievements.value)
+    name: val('name'), title: val('title'), summary: val('summary'),
+    email: val('email'), phone: val('phone'), location: val('location'),
+    skills: csv(val('skills')), achievements: lines(val('achievements'))
   };
 
   btn.disabled = true; btn.textContent = 'Generating…';
