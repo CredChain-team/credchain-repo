@@ -7,6 +7,10 @@
 // ─────────────────────────────────────────────────────────────
 
 import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { ShieldCheck, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Card, Button } from '../../ui';
+import { fadeUp } from '../../../theme/motion';
 
 const KEY = 'credchain_nysc';
 
@@ -49,59 +53,64 @@ export default function NyscTracker() {
   }
 
   return (
-    <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">🪖</span>
-          <h2 className="text-sm font-semibold tracking-tight text-blue-900">NYSC Pre-Validation</h2>
+    <motion.div {...fadeUp}>
+      <Card className="border-info-500/30 bg-info-500/[0.06]">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-info-500/15 text-info-500">
+              <ShieldCheck className="h-5 w-5" />
+            </span>
+            <h2 className="text-sm font-semibold tracking-tight text-content-primary">NYSC Pre-Validation</h2>
+          </div>
+          <button type="button" onClick={prefillFromRecord} className="text-xs font-medium text-info-500 hover:underline">Use my on-chain record</button>
         </div>
-        <button type="button" onClick={prefillFromRecord} className="text-xs font-medium text-blue-600 hover:underline">Use my on-chain record</button>
-      </div>
-      <p className="mt-1 text-xs text-blue-700/70">Catch Senate-List data mismatches now — not after mobilization fails.</p>
+        <p className="mt-2 text-xs text-content-secondary">Catch Senate-List data mismatches now — not after mobilization fails.</p>
 
-      <form onSubmit={runMatch} className="mt-4 grid grid-cols-2 gap-2">
-        <Field label="Matric number" value={form.matric} onChange={(v) => set('matric', v)} placeholder="UNN/2021/CSC/0184" />
-        <Field label="Date of birth" type="date" value={form.dob} onChange={(v) => set('dob', v)} />
-        <Field label="Course" value={form.course} onChange={(v) => set('course', v)} placeholder="Computer Science" />
-        <Field label="Graduation date" type="date" value={form.graduationDate} onChange={(v) => set('graduationDate', v)} />
-        <button
-          type="submit"
-          className="col-span-2 mt-1 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 active:scale-[0.97]"
-        >
-          Run Senate-List match
-        </button>
-      </form>
+        <form onSubmit={runMatch} className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <Field label="Matric number" value={form.matric} onChange={(v) => set('matric', v)} placeholder="UNN/2021/CSC/0184" />
+          <Field label="Date of birth" type="date" value={form.dob} onChange={(v) => set('dob', v)} />
+          <Field label="Course" value={form.course} onChange={(v) => set('course', v)} placeholder="Computer Science" />
+          <Field label="Graduation date" type="date" value={form.graduationDate} onChange={(v) => set('graduationDate', v)} />
+          <Button type="submit" fullWidth className="mt-1 sm:col-span-2">
+            Run Senate-List match
+          </Button>
+        </form>
 
-      {result && (
-        result.ok ? (
-          <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-            ✓ All fields match the on-chain record. You’re clear for mobilization.
-          </div>
-        ) : (
-          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
-            <p className="text-sm font-medium text-amber-800">⚠ {result.mismatches.length} mismatch(es) — fix before the Senate List is sent:</p>
-            <ul className="mt-1 space-y-1 text-xs text-amber-700">
-              {result.mismatches.map((m, i) => (
-                <li key={i}>• <strong>{m.field}</strong>: you entered “{m.got}”, record says “{m.expected}”.</li>
-              ))}
-            </ul>
-          </div>
-        )
-      )}
-    </section>
+        {result && (
+          result.ok ? (
+            <div className="mt-3 flex items-start gap-2 rounded-xl border border-accent-500/30 bg-accent-500/[0.08] p-3 text-sm text-accent-600 dark:text-accent-400">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>All fields match the on-chain record. You’re clear for mobilization.</span>
+            </div>
+          ) : (
+            <div className="mt-3 rounded-xl border border-warning-500/30 bg-warning-500/[0.08] p-3">
+              <p className="flex items-center gap-2 text-sm font-medium text-warning-500">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                {result.mismatches.length} mismatch(es) — fix before the Senate List is sent:
+              </p>
+              <ul className="mt-1.5 space-y-1 text-xs text-warning-500">
+                {result.mismatches.map((m, i) => (
+                  <li key={i}>• <strong>{m.field}</strong>: you entered “{m.got}”, record says “{m.expected}”.</li>
+                ))}
+              </ul>
+            </div>
+          )
+        )}
+      </Card>
+    </motion.div>
   );
 }
 
 function Field({ label, value, onChange, placeholder, type = 'text' }) {
   return (
-    <label className="flex flex-col gap-1 text-xs text-gray-600">
+    <label className="flex flex-col gap-1 text-xs text-content-secondary">
       {label}
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-gray-300 bg-white px-2.5 py-2 text-sm text-gray-900 transition-all duration-150 placeholder:text-gray-400 hover:border-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+        className="w-full rounded-xl border border-border-subtle bg-bg-elevated px-2.5 py-2 text-sm text-content-primary transition-colors duration-150 placeholder:text-content-muted hover:border-border-strong focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
       />
     </label>
   );

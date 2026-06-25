@@ -13,6 +13,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { useAuth, PORTAL_HOME } from '../../context/AuthContext';
 
 const ERROR_COPY = {
@@ -59,17 +60,19 @@ export default function AuthCallback() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-        <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl ring-1 ring-black/5">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-2xl">⚠️</div>
-          <h1 className="text-lg font-semibold tracking-tight text-gray-900">Sign-in didn’t complete</h1>
-          <p className="mt-2 text-sm leading-relaxed text-gray-500">
+      <div className="flex min-h-screen items-center justify-center bg-bg-base px-4">
+        <div className="w-full max-w-md rounded-2xl border border-border-subtle bg-bg-elevated p-8 text-center shadow-xl">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-danger-500/12 text-danger-500">
+            <AlertTriangle className="h-6 w-6" />
+          </div>
+          <h1 className="text-lg font-bold tracking-tight text-content-primary">Sign-in didn’t complete</h1>
+          <p className="mt-2 text-sm leading-relaxed text-content-secondary">
             {ERROR_COPY[error] || `Unexpected error: ${error}`}
           </p>
           <button
             type="button"
             onClick={() => navigate('/login', { replace: true })}
-            className="mt-6 w-full rounded-xl bg-blue-600 px-4 py-2.5 font-semibold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 hover:shadow-md active:scale-[0.97]"
+            className="mt-6 w-full rounded-md bg-brand-600 px-4 py-2.5 font-semibold text-white shadow-sm transition-all duration-150 hover:bg-brand-700 active:scale-[0.97]"
           >
             Back to sign in
           </button>
@@ -79,9 +82,9 @@ export default function AuthCallback() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50">
-      <div className="flex flex-col items-center gap-4 text-gray-500">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-gray-200 border-t-blue-600" />
+    <div className="flex min-h-screen items-center justify-center bg-bg-base">
+      <div className="flex flex-col items-center gap-4 text-content-secondary">
+        <Loader2 className="h-10 w-10 animate-spin text-brand-600" />
         <p className="text-sm">Completing sign-in…</p>
       </div>
     </div>

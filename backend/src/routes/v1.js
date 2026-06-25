@@ -30,7 +30,29 @@ const credential = require('../controllers/credentialController');
 const auth = require('../controllers/authController');
 const employer = require('../controllers/employerController');
 
+const mongoose = require('mongoose');
+
 const router = express.Router();
+
+// ── Health (PUBLIC) ──────────────────────────────────────────
+// Lightweight readiness probe for the SPA + monitors: reports DB
+// connection state and which optional integrations are configured.
+router.get('/health', (req, res) => {
+  const dbStates = ['disconnected', 'connected', 'connecting', 'disconnecting'];
+  res.json({
+    success: true,
+    service: 'credchain-api-v1',
+    status: 'ok',
+    time: new Date().toISOString(),
+    db: dbStates[mongoose.connection?.readyState] || 'unknown',
+    integrations: {
+      google: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+      solana: Boolean(process.env.SOLANA_RPC_URL),
+      aiCvEngine: Boolean(process.env.AI_CV_ENGINE_URL),
+      aiInsightsEngine: Boolean(process.env.AI_INSIGHTS_ENGINE_URL),
+    },
+  });
+});
 
 // ── Auth: unified "Sign in with Google" (PUBLIC) ─────────────
 // Single OAuth flow for all three roles. The role chosen at the login

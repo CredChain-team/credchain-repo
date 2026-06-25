@@ -17,7 +17,7 @@ export default function GoogleSignInButton({ role, label = 'Continue with Google
       type="button"
       onClick={startOAuth}
       disabled={disabled}
-      className="mt-4 flex w-full items-center justify-center gap-3 rounded-xl border border-gray-300 bg-white py-3 font-medium text-gray-700 shadow-sm transition-all duration-150 hover:bg-gray-50 active:scale-[0.98] active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+      className="flex w-full items-center justify-center gap-3 rounded-md border border-border-strong bg-bg-elevated py-3 font-semibold text-content-primary shadow-sm transition-all duration-150 hover:bg-bg-sunken active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
     >
       <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
         <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" />
