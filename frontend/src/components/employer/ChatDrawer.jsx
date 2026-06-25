@@ -6,6 +6,9 @@
 // ─────────────────────────────────────────────────────────────
 
 import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { X, Send, Lock, CheckCircle2, Pin } from 'lucide-react';
+import { Avatar, Badge } from '../ui';
 
 export default function ChatDrawer({ room, meId, onClose, onSend }) {
   const [text, setText] = useState('');
@@ -19,45 +22,84 @@ export default function ChatDrawer({ room, meId, onClose, onSend }) {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-80 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl ring-1 ring-black/5 animate-slide-up">
-      <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-        <div>
-          <p className="text-sm font-semibold text-gray-900">{room.otherParticipant?.name || 'Candidate'}</p>
-          <p className="text-[11px]">
-            {room.isUnlocked
-              ? <span className="font-medium text-emerald-600">Unlocked · credit refunded</span>
-              : <span className="font-medium text-amber-600">🔒 LOCKED until they reply</span>}
-          </p>
+    <motion.div
+      initial={{ opacity: 0, y: 24, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+      className="fixed bottom-4 right-4 z-50 w-[min(92vw,22rem)] overflow-hidden rounded-2xl border border-border-subtle bg-bg-elevated shadow-2xl"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2 border-b border-border-subtle px-4 py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar name={room.otherParticipant?.name || 'Candidate'} size="sm" />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-content-primary">{room.otherParticipant?.name || 'Candidate'}</p>
+            {room.isUnlocked ? (
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-accent-600">
+                <CheckCircle2 className="h-3 w-3" /> Unlocked · credit refunded
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-warning-500">
+                <Lock className="h-3 w-3" /> Locked until they reply
+              </span>
+            )}
+          </div>
         </div>
-        <button onClick={onClose} className="rounded-xl p-2 text-gray-400 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-600">✕</button>
+        <button
+          onClick={onClose}
+          className="shrink-0 rounded-lg p-2 text-content-muted transition-colors hover:bg-bg-sunken hover:text-content-primary"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
 
       {room.context && (
-        <div className="border-b border-gray-100 bg-slate-50 px-4 py-2 text-xs">
-          <span className="text-gray-400">📌 Re: </span>
-          <span className="font-medium text-blue-700">{room.context.title}</span>
-          {room.context.issuer && <span className="text-gray-400"> · {room.context.issuer}</span>}
+        <div className="flex items-center gap-1.5 border-b border-border-subtle bg-bg-sunken px-4 py-2 text-xs">
+          <Pin className="h-3 w-3 shrink-0 text-content-muted" />
+          <span className="text-content-muted">Re:</span>
+          <span className="truncate font-medium text-brand-600">{room.context.title}</span>
+          {room.context.issuer && <span className="truncate text-content-muted">· {room.context.issuer}</span>}
         </div>
       )}
 
-      <div className="max-h-56 space-y-2 overflow-y-auto px-4 py-3">
-        {room.messages.length === 0 && <p className="text-center text-xs text-gray-400">Say hello — outreach is free once they reply.</p>}
-        {room.messages.map((m, i) => (
-          <div key={i} className={`max-w-[80%] rounded-xl px-3 py-1.5 text-sm ${String(m.from) === String(meId) ? 'ml-auto bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'}`}>
-            {m.text}
-          </div>
-        ))}
+      {/* Messages */}
+      <div className="max-h-60 space-y-2 overflow-y-auto px-4 py-3">
+        {room.messages.length === 0 && (
+          <p className="py-6 text-center text-xs text-content-muted">Say hello — outreach is free once they reply.</p>
+        )}
+        {room.messages.map((m, i) => {
+          const mine = String(m.from) === String(meId);
+          return (
+            <div
+              key={i}
+              className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm ${
+                mine
+                  ? 'ml-auto rounded-br-md bg-brand-600 text-white'
+                  : 'mr-auto rounded-bl-md bg-bg-sunken text-content-primary'
+              }`}
+            >
+              {m.text}
+            </div>
+          );
+        })}
       </div>
 
-      <form onSubmit={submit} className="flex gap-2 border-t border-gray-100 p-3">
+      {/* Composer */}
+      <form onSubmit={submit} className="flex items-center gap-2 border-t border-border-subtle p-3">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Type a message…"
-          className="w-full flex-1 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-all duration-150 placeholder:text-gray-400 hover:border-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          className="h-10 w-full flex-1 rounded-lg border border-border-subtle bg-bg-elevated px-3 text-sm text-content-primary transition-colors placeholder:text-content-muted focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
         />
-        <button type="submit" className="shrink-0 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 active:scale-[0.97]">Send</button>
+        <button
+          type="submit"
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
+          disabled={!text.trim()}
+        >
+          <Send className="h-4 w-4" />
+        </button>
       </form>
-    </div>
+    </motion.div>
   );
 }

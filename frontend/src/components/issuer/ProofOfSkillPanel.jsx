@@ -7,7 +7,11 @@
 // ─────────────────────────────────────────────────────────────
 
 import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Webhook, GitBranch, Gavel, Copy, Check, Trophy, Zap } from 'lucide-react';
 import { issueVerifiedCredential } from '../../services/api';
+import { Card, Button, Input } from '../ui';
+import { fadeUp } from '../../theme/motion';
 
 export default function ProofOfSkillPanel({ onIssued }) {
   const [hook] = useState(() => {
@@ -50,50 +54,86 @@ export default function ProofOfSkillPanel({ onIssued }) {
     }
   }
 
-  const inputClass =
-    'w-full rounded-xl border border-gray-300 bg-white px-2.5 py-2.5 text-sm text-gray-900 transition-all duration-150 placeholder:text-gray-400 hover:border-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
-
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-card">
-      <h3 className="text-sm font-semibold text-gray-900">Proof-of-Skill Auto-Issuer</h3>
-      <p className="mt-1 text-xs text-gray-500">Hook these into GitHub / your judging platform to mint on merge or win.</p>
-
-      <div className="mt-3 space-y-2">
-        <WebhookRow label="GitHub merge webhook" url={hook.github} onCopy={copy} />
-        <WebhookRow label="Judging API webhook" url={hook.judging} onCopy={copy} />
-      </div>
-
-      <div className="mt-4 rounded-xl border border-gray-200 bg-slate-50 p-3">
-        <p className="text-xs font-medium text-gray-700">Simulate a winner (fires a real auto-issue)</p>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <input value={project} onChange={(e) => setProject(e.target.value)} placeholder="Project / event name" className={inputClass} />
-          <input value={winnerEmail} onChange={(e) => setWinnerEmail(e.target.value)} placeholder="Winner email (optional)" className={inputClass} />
+    <Card padding="none" className="overflow-hidden">
+      <div className="flex items-center gap-3 border-b border-border-subtle px-5 py-4">
+        <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/12 text-violet-600 dark:text-violet-400">
+          <Webhook className="h-5 w-5" />
+        </span>
+        <div>
+          <h3 className="text-sm font-bold text-content-primary">Proof-of-Skill Auto-Issuer</h3>
+          <p className="mt-0.5 text-xs text-content-secondary">Hook these into GitHub / your judging platform to mint on merge or win.</p>
         </div>
-        <button
-          type="button"
-          onClick={simulateWinner}
-          disabled={busy || !project.trim()}
-          className="mt-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 active:scale-[0.97] disabled:opacity-50"
-        >
-          {busy ? 'Issuing…' : 'Simulate winner → auto-issue'}
-        </button>
-        {msg && <p className={`mt-2 text-xs ${msg.type === 'ok' ? 'text-emerald-600' : 'text-red-600'}`}>{msg.text}</p>}
       </div>
 
-      <p className="mt-2 text-[11px] text-gray-400">
-        This is the primary path for a self-taught, unaffiliated builder to earn a Verified Ledger credential — a confirmed, judged outcome is itself legitimate verification.
-      </p>
-    </div>
+      <div className="px-5 py-5">
+        <div className="space-y-3">
+          <WebhookRow icon={<GitBranch className="h-4 w-4" />} label="GitHub merge webhook" url={hook.github} onCopy={copy} />
+          <WebhookRow icon={<Gavel className="h-4 w-4" />} label="Judging API webhook" url={hook.judging} onCopy={copy} />
+        </div>
+
+        <div className="mt-5 rounded-lg border border-border-subtle bg-bg-sunken p-4">
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-content-primary">
+            <Trophy className="h-4 w-4 text-warning-500" />
+            Simulate a winner <span className="font-normal text-content-muted">(fires a real auto-issue)</span>
+          </p>
+          <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            <Input value={project} onChange={(e) => setProject(e.target.value)} placeholder="Project / event name" />
+            <Input value={winnerEmail} onChange={(e) => setWinnerEmail(e.target.value)} placeholder="Winner email (optional)" />
+          </div>
+          <Button
+            type="button"
+            variant="primary"
+            className="mt-3"
+            onClick={simulateWinner}
+            disabled={busy || !project.trim()}
+            loading={busy}
+            leftIcon={!busy && <Zap className="h-4 w-4" />}
+          >
+            {busy ? 'Issuing…' : 'Simulate winner → auto-issue'}
+          </Button>
+          {msg && (
+            <motion.p
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              className={`mt-2.5 text-xs font-medium ${msg.type === 'ok' ? 'text-accent-600 dark:text-accent-400' : 'text-danger-500'}`}
+            >
+              {msg.text}
+            </motion.p>
+          )}
+        </div>
+
+        <p className="mt-3 text-[11px] leading-relaxed text-content-muted">
+          This is the primary path for a self-taught, unaffiliated builder to earn a Verified Ledger credential — a confirmed, judged outcome is itself legitimate verification.
+        </p>
+      </div>
+    </Card>
   );
 }
 
-function WebhookRow({ label, url, onCopy }) {
+function WebhookRow({ icon, label, url, onCopy }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    onCopy(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
   return (
     <div>
-      <p className="text-[11px] text-gray-500">{label}</p>
-      <div className="mt-1 flex gap-2">
-        <input readOnly value={url} className="min-w-0 flex-1 truncate rounded-xl border border-gray-300 bg-slate-50 px-2.5 py-1.5 font-mono text-[13px] text-blue-700" />
-        <button type="button" onClick={() => onCopy(url)} className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition-all duration-150 hover:bg-gray-50 active:scale-[0.97]">copy</button>
+      <p className="flex items-center gap-1.5 text-[11px] font-medium text-content-secondary">
+        <span className="text-content-muted">{icon}</span>
+        {label}
+      </p>
+      <div className="mt-1.5 flex gap-2">
+        <input
+          readOnly
+          value={url}
+          className="min-w-0 flex-1 truncate rounded-md border border-border-subtle bg-bg-sunken px-3 py-2 font-mono text-[13px] text-brand-600 dark:text-brand-300"
+        />
+        <Button type="button" variant="outline" size="sm" onClick={handleCopy} leftIcon={copied ? <Check className="h-4 w-4 text-accent-500" /> : <Copy className="h-4 w-4" />}>
+          {copied ? 'Copied' : 'Copy'}
+        </Button>
       </div>
     </div>
   );

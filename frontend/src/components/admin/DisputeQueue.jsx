@@ -5,7 +5,11 @@
 // ─────────────────────────────────────────────────────────────
 
 import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { PartyPopper, RotateCcw, ShieldX, Quote } from 'lucide-react';
 import { timeAgo } from '../../lib/format';
+import { Card, Badge, Button, EmptyState } from '../ui';
+import { stagger, staggerItem } from '../../theme/motion';
 
 export default function DisputeQueue({ disputes, onResolve }) {
   const [busyId, setBusyId] = useState(null);
@@ -21,36 +25,60 @@ export default function DisputeQueue({ disputes, onResolve }) {
 
   if (disputes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-14 text-center animate-fade-in">
-        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-2xl">🎉</div>
-        <p className="font-semibold tracking-tight text-gray-900">No disputes awaiting review</p>
-        <p className="mt-1 max-w-xs text-sm leading-relaxed text-gray-400">The queue is clear. New disputes will appear here.</p>
-      </div>
+      <Card>
+        <EmptyState
+          icon={PartyPopper}
+          title="No disputes awaiting review"
+          description="The queue is clear. New disputes will appear here."
+        />
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <motion.div variants={stagger(0.05)} initial="initial" animate="animate" className="space-y-3">
       {disputes.map((d) => (
-        <div key={String(d.id)} className="rounded-xl border border-gray-200 border-l-4 border-l-amber-400 bg-white p-4 shadow-card transition-shadow duration-200 hover:shadow-card-hover">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="font-semibold tracking-tight text-gray-900">{d.title}</p>
-              <p className="text-xs text-gray-500">Issued by {d.issuer} · disputed by {d.student}</p>
+        <motion.div key={String(d.id)} variants={staggerItem}>
+          <Card className="border-l-4 border-l-warning-500">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-bold tracking-tight text-content-primary">{d.title}</p>
+                <p className="mt-0.5 text-xs text-content-secondary">
+                  Issued by <span className="font-medium text-content-primary">{d.issuer}</span> · disputed by <span className="font-medium text-content-primary">{d.student}</span>
+                </p>
+              </div>
+              <Badge tone="warning" variant="soft" size="sm">{timeAgo(d.filedAt)}</Badge>
             </div>
-            <span className="text-xs text-gray-400">{timeAgo(d.filedAt)}</span>
-          </div>
-          <p className="mt-2 rounded-lg border border-gray-200 bg-slate-50 px-3 py-2 text-sm text-gray-700">“{d.reason}”</p>
-          <div className="mt-3 flex gap-2">
-            <button type="button" disabled={busyId === d.id} onClick={() => resolve(d.id, 'reinstate')} className="rounded-xl bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 active:scale-[0.97] disabled:opacity-50">
-              Reinstate credential
-            </button>
-            <button type="button" disabled={busyId === d.id} onClick={() => resolve(d.id, 'uphold')} className="rounded-xl bg-red-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-red-700 active:scale-[0.97] disabled:opacity-50">
-              Uphold revocation
-            </button>
-          </div>
-        </div>
+
+            <div className="mt-3 flex items-start gap-2 rounded-lg border border-border-subtle bg-bg-sunken px-3 py-2.5 text-sm text-content-secondary">
+              <Quote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-content-muted" />
+              <span className="italic">{d.reason}</span>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="primary"
+                disabled={busyId === d.id}
+                loading={busyId === d.id}
+                leftIcon={<RotateCcw className="h-4 w-4" />}
+                onClick={() => resolve(d.id, 'reinstate')}
+              >
+                Reinstate credential
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={busyId === d.id}
+                leftIcon={<ShieldX className="h-4 w-4" />}
+                onClick={() => resolve(d.id, 'uphold')}
+              >
+                Uphold revocation
+              </Button>
+            </div>
+          </Card>
+        </motion.div>
       ))}
-    </div>
+    </motion.div>
   );
 }

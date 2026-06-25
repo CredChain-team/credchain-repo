@@ -6,13 +6,15 @@
 // (Section 5.1). Dispute state comes from the backend (credential.dispute).
 // ─────────────────────────────────────────────────────────────
 
+import { CheckCircle2, XCircle, Clock, Hexagon, ExternalLink } from 'lucide-react';
 import { badgeUrl } from '../../services/api';
 import { timeAgo } from '../../lib/format';
+import { Card, Badge, Button } from '../ui';
 
 const STATUS_STYLE = {
-  accepted: { ring: 'border-emerald-200', pill: 'bg-emerald-50 text-emerald-700 border border-emerald-200', label: '✓ Verified' },
-  revoked: { ring: 'border-red-200', pill: 'bg-red-50 text-red-700 border border-red-200', label: '✕ Revoked' },
-  under_review: { ring: 'border-amber-200', pill: 'bg-amber-50 text-amber-700 border border-amber-200', label: '⏳ Under Review' },
+  accepted: { tone: 'success', label: 'Verified', icon: CheckCircle2 },
+  revoked: { tone: 'danger', label: 'Revoked', icon: XCircle },
+  under_review: { tone: 'warning', label: 'Under Review', icon: Clock },
 };
 
 export default function LedgerCard({ credential, onViewProof, onDispute }) {
@@ -20,6 +22,7 @@ export default function LedgerCard({ credential, onViewProof, onDispute }) {
   const underReview = dispute?.status === 'under_review';
   const effectiveStatus = underReview ? 'under_review' : credential.status;
   const style = STATUS_STYLE[effectiveStatus] || STATUS_STYLE.accepted;
+  const StatusIcon = style.icon;
   const onChain = Boolean(credential.solanaTxSignature || credential.txSignature);
 
   // Build the lifecycle trail.
@@ -43,55 +46,51 @@ export default function LedgerCard({ credential, onViewProof, onDispute }) {
   const canDispute = credential.status === 'revoked' && (!dispute || dispute.status === 'none');
 
   return (
-    <div className={`rounded-xl border bg-white p-4 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover ${style.ring}`}>
+    <Card interactive padding="md">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold tracking-tight text-gray-900">{credential.title}</p>
-          <p className="mt-0.5 truncate text-xs text-gray-500">{credential.issuer || 'Verified Issuer'}</p>
+          <p className="truncate text-sm font-semibold tracking-tight text-content-primary">{credential.title}</p>
+          <p className="mt-0.5 truncate text-xs text-content-muted">{credential.issuer || 'Verified Issuer'}</p>
         </div>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${style.pill}`}>{style.label}</span>
+        <Badge tone={style.tone} variant="soft" size="sm" icon={<StatusIcon />} className="shrink-0">
+          {style.label}
+        </Badge>
       </div>
 
       <div className="mt-2">
         <img src={badgeUrl(credential.id)} alt="Live verification badge" className="h-6" />
       </div>
 
-      <ol className="mt-3 space-y-2 border-l-2 border-gray-100 pl-3 text-xs">
+      <ol className="mt-3 space-y-2 border-l-2 border-border-subtle pl-3 text-xs">
         {trail.map((step, i) => (
           <li key={i} className="relative">
-            <span className={`absolute -ml-[17px] mt-1 h-2 w-2 rounded-full ${step.danger ? 'bg-red-400' : step.warn ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-            <span className="text-gray-700">{step.label}</span>
-            {step.at && <span className="ml-1 text-[10px] text-gray-400">· {timeAgo(step.at)}</span>}
+            <span className={`absolute -ml-[17px] mt-1 h-2 w-2 rounded-full ${step.danger ? 'bg-danger-500' : step.warn ? 'bg-warning-500' : 'bg-accent-500'}`} />
+            <span className="text-content-secondary">{step.label}</span>
+            {step.at && <span className="ml-1 text-[10px] text-content-muted">· {timeAgo(step.at)}</span>}
           </li>
         ))}
       </ol>
 
       {underReview && (
-        <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-          <span className="shrink-0">⏳</span>
+        <div className="mt-3 flex items-start gap-2 rounded-lg border border-warning-500/30 bg-warning-500/10 px-3 py-2 text-xs text-warning-500">
+          <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>Frozen pending an independent platform-admin decision — not the issuer who revoked it.</span>
         </div>
       )}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => onViewProof(credential)}
-          className="rounded-xl px-3 py-2 text-sm font-medium text-blue-600 transition-colors duration-150 hover:bg-blue-50 active:bg-blue-100"
-        >
+        <Button variant="ghost" size="sm" onClick={() => onViewProof(credential)} rightIcon={<ExternalLink className="h-3.5 w-3.5" />}>
           View On-Chain Proof
-        </button>
-        {onChain && <span className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">On Solana ✓</span>}
+        </Button>
+        {onChain && (
+          <Badge tone="brand" variant="soft" size="sm" icon={<Hexagon />}>On Solana</Badge>
+        )}
         {canDispute && (
-          <button
-            type="button"
-            onClick={() => onDispute(credential)}
-            className="rounded-xl bg-red-600 px-3 py-1.5 text-sm font-semibold text-white transition-all duration-150 hover:bg-red-700 active:scale-[0.97] active:bg-red-800"
-          >
+          <Button variant="danger" size="sm" onClick={() => onDispute(credential)}>
             Dispute
-          </button>
+          </Button>
         )}
       </div>
-    </div>
+    </Card>
   );
 }

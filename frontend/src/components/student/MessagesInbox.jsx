@@ -6,8 +6,10 @@
 // ─────────────────────────────────────────────────────────────
 
 import { useEffect, useRef, useState } from 'react';
+import { MessageSquare, Lock, Pin, Send, CheckCircle2 } from 'lucide-react';
 import { getChatRooms, sendChatMessageV1 } from '../../services/api';
 import { connectSocket, socket } from '../../services/socket';
+import { Avatar, Badge, EmptyState, Skeleton } from '../ui';
 
 export default function MessagesInbox({ meId }) {
   const [rooms, setRooms] = useState([]);
@@ -76,31 +78,35 @@ export default function MessagesInbox({ meId }) {
   const active = rooms.find((r) => String(r.id) === String(activeId)) || null;
   const unread = rooms.filter((r) => !r.isUnlocked).length;
 
-  function initials(name) {
-    return (name || 'R').trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('') || 'R';
-  }
-
   return (
-    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-card">
-      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-        <h3 className="text-sm font-semibold text-gray-900">Messages</h3>
-        {unread > 0 && (
-          <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-blue-600 px-1.5 text-xs font-medium text-white">{unread}</span>
-        )}
+    <section className="overflow-hidden rounded-lg border border-border-subtle bg-bg-elevated shadow-sm">
+      <div className="flex items-center justify-between border-b border-border-subtle px-5 py-4">
+        <h3 className="flex items-center gap-2 text-sm font-bold text-content-primary">
+          <MessageSquare className="h-4 w-4 text-brand-600" /> Messages
+        </h3>
+        {unread > 0 && <Badge tone="brand" variant="solid" size="sm">{unread}</Badge>}
       </div>
 
-      {loaded && rooms.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-14 text-center animate-fade-in">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-2xl">💬</div>
-          <p className="font-semibold tracking-tight text-gray-900">No messages yet</p>
-          <p className="mt-1 max-w-xs text-sm leading-relaxed text-gray-400">Recruiters who find your verified credentials can reach out here.</p>
+      {!loaded && (
+        <div className="space-y-3 p-5">
+          <Skeleton variant="text" lines={2} />
+          <Skeleton h={48} />
+          <Skeleton h={48} />
         </div>
       )}
 
+      {loaded && rooms.length === 0 && (
+        <EmptyState
+          icon={MessageSquare}
+          title="No messages yet"
+          description="Recruiters who find your verified credentials can reach out here."
+        />
+      )}
+
       {rooms.length > 0 && (
-        <div className="grid sm:grid-cols-[220px_1fr]">
+        <div className="grid sm:grid-cols-[240px_1fr]">
           {/* Room list */}
-          <div className="divide-y divide-gray-50 border-b border-gray-100 sm:border-b-0 sm:border-r">
+          <div className="divide-y divide-border-subtle border-b border-border-subtle sm:border-b-0 sm:border-r">
             {rooms.map((r) => {
               const activeRoom = String(activeId) === String(r.id);
               return (
@@ -108,15 +114,13 @@ export default function MessagesInbox({ meId }) {
                   key={r.id}
                   type="button"
                   onClick={() => setActiveId(r.id)}
-                  className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors duration-150 ${activeRoom ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
+                  className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors duration-150 ${activeRoom ? 'bg-bg-brand-soft' : 'hover:bg-bg-sunken'}`}
                 >
-                  <span className="flex h-9 w-9 shrink-0 select-none items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
-                    {initials(r.otherParticipant?.name)}
-                  </span>
+                  <Avatar name={r.otherParticipant?.name || 'Recruiter'} size="sm" />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-gray-900">{r.otherParticipant?.name || 'Recruiter'}</span>
-                    <span className={`text-[10px] font-medium ${r.isUnlocked ? 'text-emerald-600' : 'text-amber-600'}`}>
-                      {r.isUnlocked ? 'unlocked' : '🔒 reply to unlock'}
+                    <span className="block truncate text-sm font-medium text-content-primary">{r.otherParticipant?.name || 'Recruiter'}</span>
+                    <span className={`flex items-center gap-1 text-[10px] font-medium ${r.isUnlocked ? 'text-accent-600 dark:text-accent-400' : 'text-warning-500'}`}>
+                      {r.isUnlocked ? <><CheckCircle2 className="h-3 w-3" /> unlocked</> : <><Lock className="h-3 w-3" /> reply to unlock</>}
                     </span>
                   </span>
                 </button>
@@ -127,19 +131,20 @@ export default function MessagesInbox({ meId }) {
           {/* Thread */}
           <div className="p-4">
             {!active ? (
-              <p className="py-8 text-center text-sm text-gray-400">Select a conversation.</p>
+              <p className="py-8 text-center text-sm text-content-muted">Select a conversation.</p>
             ) : (
               <>
                 {active.context && (
-                  <div className="mb-2 rounded-lg border border-gray-200 bg-slate-50 px-3 py-1.5 text-xs">
-                    <span className="text-gray-400">📌 Re: </span>
-                    <span className="font-medium text-blue-700">{active.context.title}</span>
+                  <div className="mb-3 flex items-center gap-1.5 rounded-md border border-border-subtle bg-bg-sunken px-3 py-1.5 text-xs">
+                    <Pin className="h-3 w-3 text-content-muted" />
+                    <span className="text-content-muted">Re:</span>
+                    <span className="font-medium text-brand-600">{active.context.title}</span>
                   </div>
                 )}
-                <div className="max-h-48 space-y-2 overflow-y-auto">
-                  {active.messages.length === 0 && <p className="text-center text-xs text-gray-400">No messages yet.</p>}
+                <div className="max-h-48 space-y-2 overflow-y-auto scroll-thin">
+                  {active.messages.length === 0 && <p className="text-center text-xs text-content-muted">No messages yet.</p>}
                   {active.messages.map((m, i) => (
-                    <div key={i} className={`max-w-[80%] rounded-xl px-3 py-1.5 text-sm ${String(m.from) === String(meId) ? 'ml-auto bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'}`}>
+                    <div key={i} className={`max-w-[80%] rounded-lg px-3 py-1.5 text-sm ${String(m.from) === String(meId) ? 'ml-auto bg-brand-600 text-white' : 'bg-bg-sunken text-content-primary'}`}>
                       {m.text}
                     </div>
                   ))}
@@ -149,13 +154,13 @@ export default function MessagesInbox({ meId }) {
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Reply…"
-                    className="w-full flex-1 rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 transition-all duration-150 placeholder:text-gray-400 hover:border-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="h-11 w-full flex-1 rounded-md border border-border-subtle bg-bg-elevated px-3.5 text-sm text-content-primary placeholder:text-content-muted transition-colors focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
                   />
                   <button
                     type="submit"
-                    className="shrink-0 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 active:scale-[0.97]"
+                    className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-md bg-brand-600 px-4 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.97]"
                   >
-                    Send
+                    <Send className="h-4 w-4" /> Send
                   </button>
                 </form>
               </>

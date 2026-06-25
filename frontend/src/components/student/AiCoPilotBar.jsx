@@ -7,9 +7,15 @@
 // ─────────────────────────────────────────────────────────────
 
 import { useState } from 'react';
+import { motion } from 'framer-motion';
+import {
+  Sparkles, FileText, TrendingUp, CheckCircle2, XCircle,
+} from 'lucide-react';
 import { generateVerifiedCv, syncTelemetry } from '../../services/api';
 import { formatSalary } from '../../lib/format';
 import { getCountryModule } from '../../config/countryModules';
+import { Card, Badge, Button } from '../ui';
+import { fadeUp } from '../../theme/motion';
 
 export default function AiCoPilotBar({ userId, countryCode = 'NG', telemetry, onTelemetry }) {
   const [cvBusy, setCvBusy] = useState(false);
@@ -59,68 +65,58 @@ export default function AiCoPilotBar({ userId, countryCode = 'NG', telemetry, on
   }
 
   return (
-    <section className="flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-card">
+    <Card padding="lg" className="flex h-full flex-col">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900">AI Co-Pilot</h3>
-        <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-600">
-          Beta
-        </span>
+        <h3 className="flex items-center gap-2 text-sm font-bold text-content-primary">
+          <Sparkles className="h-4 w-4 text-brand-600" /> AI Co-Pilot
+        </h3>
+        <Badge tone="brand" variant="soft" size="sm">Beta</Badge>
       </div>
 
-      <button
-        type="button"
-        onClick={downloadCv}
-        disabled={cvBusy}
-        className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 hover:shadow-md active:scale-[0.97] active:bg-blue-800 disabled:opacity-50"
-      >
-        {cvBusy ? 'Generating…' : '📄 Generate Verified CV'}
-      </button>
-      <button
-        type="button"
-        onClick={runTelemetry}
-        disabled={telBusy}
-        className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all duration-150 hover:bg-gray-50 active:scale-[0.97] disabled:opacity-50"
-      >
-        {telBusy ? 'Syncing…' : '📈 Sync Market Telemetry'}
-      </button>
+      <Button fullWidth loading={cvBusy} onClick={downloadCv} leftIcon={!cvBusy && <FileText className="h-4 w-4" />}>
+        {cvBusy ? 'Generating…' : 'Generate Verified CV'}
+      </Button>
+      <Button fullWidth variant="secondary" className="mt-2" loading={telBusy} onClick={runTelemetry} leftIcon={!telBusy && <TrendingUp className="h-4 w-4" />}>
+        {telBusy ? 'Syncing…' : 'Sync Market Telemetry'}
+      </Button>
 
       {msg && (
         <div
-          className={`mt-3 flex items-start gap-2 rounded-xl border px-4 py-3 text-sm animate-fade-in ${
+          className={`mt-3 flex items-start gap-2 rounded-md border px-4 py-3 text-sm ${
             msg.type === 'ok'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-              : 'border-red-200 bg-red-50 text-red-700'
+              ? 'border-accent-500/30 bg-accent-500/10 text-accent-600 dark:text-accent-400'
+              : 'border-danger-500/30 bg-danger-500/10 text-danger-500'
           }`}
         >
-          <span className="mt-0.5 shrink-0">{msg.type === 'ok' ? '✓' : '✕'}</span>
+          {msg.type === 'ok' ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <XCircle className="mt-0.5 h-4 w-4 shrink-0" />}
           <span>{msg.text}</span>
         </div>
       )}
 
       {telemetry && (
-        <div className="mt-4 grid grid-cols-2 gap-3 animate-fade-in">
-          <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 transition-colors duration-150 hover:bg-blue-100">
-            <p className="text-lg font-bold tracking-tight text-blue-700">
+        <motion.div variants={fadeUp} initial="initial" animate="animate" className="mt-4 grid grid-cols-2 gap-3">
+          <div className="rounded-md border border-border-subtle bg-bg-brand-soft p-3">
+            <p className="tnum text-lg font-bold tracking-tight text-brand-700 dark:text-brand-300">
               {telemetry.roleReadinessScore != null ? `${telemetry.roleReadinessScore}%` : '—'}
             </p>
-            <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-blue-600">Role readiness</p>
+            <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-content-muted">Role readiness</p>
           </div>
-          <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 transition-colors duration-150 hover:bg-blue-100">
-            <p className="text-lg font-bold tracking-tight text-blue-700">{formatSalary(telemetry.marketEstimatedSalary, currency)}</p>
-            <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-blue-600">Market estimate</p>
+          <div className="rounded-md border border-border-subtle bg-bg-brand-soft p-3">
+            <p className="tnum text-lg font-bold tracking-tight text-brand-700 dark:text-brand-300">{formatSalary(telemetry.marketEstimatedSalary, currency)}</p>
+            <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-content-muted">Market estimate</p>
           </div>
           {Array.isArray(telemetry.recommendedSkillGaps) && telemetry.recommendedSkillGaps.length > 0 && (
-            <div className="col-span-2 rounded-xl border border-blue-100 bg-blue-50 p-3">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-blue-600">Recommended next skills</p>
+            <div className="col-span-2 rounded-md border border-border-subtle bg-bg-sunken p-3">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-content-muted">Recommended next skills</p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {telemetry.recommendedSkillGaps.map((g, i) => (
-                  <span key={i} className="rounded-full border border-blue-200 bg-white px-2.5 py-0.5 text-xs font-medium text-blue-700">{g}</span>
+                  <Badge key={i} tone="brand" variant="soft" size="sm">{g}</Badge>
                 ))}
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
       )}
-    </section>
+    </Card>
   );
 }

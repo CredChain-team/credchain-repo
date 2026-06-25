@@ -6,7 +6,11 @@
 // ─────────────────────────────────────────────────────────────
 
 import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Inbox, CheckCircle2, XCircle } from 'lucide-react';
 import { timeAgo } from '../../lib/format';
+import { Badge, Button } from '../ui';
+import { stagger, staggerItem } from '../../theme/motion';
 
 export default function PendingQueue({ pending, onAccept, onReject }) {
   const [busyId, setBusyId] = useState(null);
@@ -26,59 +30,57 @@ export default function PendingQueue({ pending, onAccept, onReject }) {
   }
 
   return (
-    <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
-      <div className="mb-4 flex items-center gap-2">
-        <h3 className="text-sm font-semibold text-blue-900">Pending Approval Queue</h3>
-        <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-medium text-white">{pending.length}</span>
+    <section className="rounded-lg border border-brand-200 bg-bg-brand-soft p-5 dark:border-brand-500/30">
+      <div className="mb-1 flex items-center gap-2">
+        <h3 className="text-sm font-bold text-content-primary">Pending Approval Queue</h3>
+        <Badge tone="brand" variant="solid" size="sm">{pending.length}</Badge>
       </div>
-      <p className="-mt-3 mb-4 text-xs text-blue-700/70">Accept to anchor on Solana · Reject to discard. You control what becomes permanent.</p>
+      <p className="mb-4 text-xs text-content-secondary">Accept to anchor on Solana · Reject to discard. You control what becomes permanent.</p>
 
       {feedback && (
         <div
-          className={`mb-3 flex items-start gap-2 rounded-xl border px-4 py-3 text-sm animate-fade-in ${
+          className={`mb-3 flex items-start gap-2 rounded-md border px-4 py-3 text-sm ${
             feedback.type === 'ok'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-              : 'border-red-200 bg-red-50 text-red-700'
+              ? 'border-accent-500/30 bg-accent-500/10 text-accent-600 dark:text-accent-400'
+              : 'border-danger-500/30 bg-danger-500/10 text-danger-500'
           }`}
         >
-          <span className="mt-0.5 shrink-0">{feedback.type === 'ok' ? '✓' : '✕'}</span>
+          {feedback.type === 'ok' ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <XCircle className="mt-0.5 h-4 w-4 shrink-0" />}
           <span>{feedback.text}</span>
         </div>
       )}
 
-      <div className="space-y-2">
-        {pending.length === 0 && (
-          <p className="py-4 text-center text-sm text-blue-500">
+      {pending.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+          <Inbox className="h-7 w-7 text-content-muted" />
+          <p className="max-w-sm text-sm text-content-secondary">
             No pending credentials. When a verified issuer sends you one, it appears here for approval.
           </p>
-        )}
-        {pending.map((c) => (
-          <div key={c.id} className="rounded-xl border border-gray-200 bg-white p-3 shadow-card transition-shadow hover:shadow-card-hover animate-slide-up">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-gray-900">{c.title}</p>
-              <p className="mt-0.5 truncate text-xs text-gray-500">{c.issuer || 'Verified Issuer'} · {timeAgo(c.createdAt)}</p>
-            </div>
-            <div className="mt-3 flex items-center gap-2">
-              <button
-                type="button"
-                disabled={busyId === c.id}
-                onClick={() => act(c.id, onAccept, 'accepted')}
-                className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 active:scale-[0.97] disabled:opacity-50"
-              >
-                {busyId === c.id ? '…' : 'Accept'}
-              </button>
-              <button
-                type="button"
-                disabled={busyId === c.id}
-                onClick={() => act(c.id, onReject, 'rejected')}
-                className="rounded-lg border border-red-200 px-3 py-1.5 text-sm text-red-600 transition-colors duration-150 hover:bg-red-50 active:bg-red-100 disabled:opacity-50"
-              >
-                Reject
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <motion.div variants={stagger(0.05)} initial="initial" animate="animate" className="space-y-2">
+          {pending.map((c) => (
+            <motion.div
+              key={c.id}
+              variants={staggerItem}
+              className="rounded-md border border-border-subtle bg-bg-elevated p-3 shadow-sm transition-shadow hover:shadow-md"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-content-primary">{c.title}</p>
+                <p className="mt-0.5 truncate text-xs text-content-muted">{c.issuer || 'Verified Issuer'} · {timeAgo(c.createdAt)}</p>
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <Button size="sm" loading={busyId === c.id} onClick={() => act(c.id, onAccept, 'accepted')}>
+                  Accept
+                </Button>
+                <Button variant="outline" size="sm" disabled={busyId === c.id} onClick={() => act(c.id, onReject, 'rejected')} className="border-danger-500/40 text-danger-500 hover:bg-danger-500/10">
+                  Reject
+                </Button>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
     </section>
   );
 }

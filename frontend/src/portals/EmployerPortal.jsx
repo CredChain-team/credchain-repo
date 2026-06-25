@@ -7,6 +7,8 @@
 // ─────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
+import { AlertTriangle, Coins, Send, CheckCircle2, Lock, MessageSquare } from 'lucide-react';
 import PortalLayout from './PortalLayout';
 import { useAuth } from '../context/AuthContext';
 import { getTalentFeed, getChatRooms, initializeChat, sendChatMessageV1 } from '../services/api';
@@ -15,6 +17,8 @@ import TalentSearch from '../components/employer/TalentSearch';
 import TalentFeed from '../components/employer/TalentFeed';
 import ChatDrawer from '../components/employer/ChatDrawer';
 import MicroBounties from '../components/employer/MicroBounties';
+import { StatCard, Card, Avatar, Badge, EmptyState } from '../components/ui';
+import { fadeUp, stagger, staggerItem } from '../theme/motion';
 
 const NAV = [
   { key: 'talent', label: 'Find Talent', icon: '🔍' },
@@ -137,20 +141,31 @@ export default function EmployerPortal() {
       onTabChange={setTab}
     >
       {/* Persistent stats strip */}
-      <div className="mb-6 grid grid-cols-3 gap-4">
-        <Stat label="Chat credits" value={credits == null ? '—' : credits} accent />
-        <Stat label="Messaged" value={messaged} />
-        <Stat label="Replied" value={replied} />
-      </div>
+      <motion.div variants={stagger(0.06)} initial="initial" animate="animate" className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <motion.div variants={staggerItem}>
+          <StatCard label="Chat credits" value={credits == null ? 0 : credits} icon={Coins} tone="brand" />
+        </motion.div>
+        <motion.div variants={staggerItem}>
+          <StatCard label="Messaged" value={messaged} icon={Send} tone="violet" />
+        </motion.div>
+        <motion.div variants={staggerItem}>
+          <StatCard label="Replied" value={replied} icon={CheckCircle2} tone="success" />
+        </motion.div>
+      </motion.div>
 
       {notice && (
-        <div className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 animate-fade-in">
-          <span className="mt-0.5 shrink-0">⚠</span>
+        <motion.div
+          variants={fadeUp}
+          initial="initial"
+          animate="animate"
+          className="mb-4 flex items-start gap-2.5 rounded-lg border border-warning-500/40 bg-warning-500/12 px-4 py-3 text-sm text-warning-500"
+        >
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{notice}</span>
-        </div>
+        </motion.div>
       )}
 
-      <div key={tab} className="animate-fade-in">
+      <div key={tab}>
         {tab === 'talent' && (
           <TalentSearch
             onContact={(student) => {
@@ -190,55 +205,43 @@ export default function EmployerPortal() {
   );
 }
 
-function Stat({ label, value, accent }) {
-  return (
-    <div className={`rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md ${accent ? 'border-l-4 border-l-blue-600 pl-3' : ''}`}>
-      <p className="text-2xl font-bold tracking-tight text-blue-600">{value}</p>
-      <p className="mt-1 text-xs font-medium uppercase tracking-wide text-gray-500">{label}</p>
-    </div>
-  );
-}
-
 function ChatRoomsList({ rooms, onOpen }) {
   if (rooms.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-14 text-center animate-fade-in">
-        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-2xl">💬</div>
-        <p className="font-semibold tracking-tight text-gray-900">No conversations yet</p>
-        <p className="mt-1 max-w-xs text-sm leading-relaxed text-gray-400">Message a candidate from the Talent Feed to start a conversation.</p>
-      </div>
+      <EmptyState
+        icon={MessageSquare}
+        title="No conversations yet"
+        description="Message a candidate from the Talent Feed to start a conversation."
+      />
     );
   }
 
   return (
-    <div className="space-y-3">
+    <motion.div variants={stagger(0.05)} initial="initial" animate="animate" className="space-y-3">
       {rooms.map((r) => {
         const last = r.messages?.[r.messages.length - 1];
         return (
-          <button
-            key={r.id}
-            type="button"
-            onClick={() => onOpen(r.id)}
-            className="flex w-full items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
-          >
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-gray-900">{r.otherParticipant?.name || 'Candidate'}</p>
-              <p className="mt-0.5 truncate text-xs text-gray-500">{last?.text || 'No messages yet'}</p>
-            </div>
-            <div className="flex shrink-0 flex-col items-end gap-1">
-              <span
-                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
-                  r.isUnlocked
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                    : 'border-amber-200 bg-amber-50 text-amber-700'
-                }`}
-              >
-                {r.isUnlocked ? 'unlocked' : '🔒 locked'}
-              </span>
-            </div>
-          </button>
+          <motion.div key={r.id} variants={staggerItem}>
+            <Card
+              padding="none"
+              as="button"
+              onClick={() => onOpen(r.id)}
+              className="flex w-full cursor-pointer items-center justify-between gap-3 p-4 text-left transition-shadow hover:shadow-md"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <Avatar name={r.otherParticipant?.name || 'Candidate'} size="md" />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-content-primary">{r.otherParticipant?.name || 'Candidate'}</p>
+                  <p className="mt-0.5 truncate text-xs text-content-muted">{last?.text || 'No messages yet'}</p>
+                </div>
+              </div>
+              <Badge tone={r.isUnlocked ? 'success' : 'warning'} variant="soft" icon={r.isUnlocked ? <CheckCircle2 /> : <Lock />}>
+                {r.isUnlocked ? 'Unlocked' : 'Locked'}
+              </Badge>
+            </Card>
+          </motion.div>
         );
       })}
-    </div>
+    </motion.div>
   );
 }

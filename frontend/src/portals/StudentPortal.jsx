@@ -5,6 +5,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { useMemo, useState } from 'react';
+import { Vault, Coins, Flag, MessageSquare, Share2, Loader2 } from 'lucide-react';
 import PortalLayout from './PortalLayout';
 import { useAuth } from '../context/AuthContext';
 import { useStudentVault } from '../hooks/useStudentVault';
@@ -30,11 +31,11 @@ import OfflinePass from '../components/student/nigeria/OfflinePass';
 const COUNTRY = 'NG';
 
 const NAV = [
-  { key: 'vault', label: 'My Vault', icon: '🏦' },
-  { key: 'earn', label: 'Earn', icon: '💰' },
-  { key: 'nigeria', label: 'Nigeria', icon: '🇳🇬' },
-  { key: 'messages', label: 'Messages', icon: '💬' },
-  { key: 'share', label: 'Share & Export', icon: '🔗' },
+  { key: 'vault', label: 'My Vault', icon: <Vault className="h-[18px] w-[18px]" /> },
+  { key: 'earn', label: 'Earn', icon: <Coins className="h-[18px] w-[18px]" /> },
+  { key: 'nigeria', label: 'Nigeria', icon: <Flag className="h-[18px] w-[18px]" /> },
+  { key: 'messages', label: 'Messages', icon: <MessageSquare className="h-[18px] w-[18px]" /> },
+  { key: 'share', label: 'Share & Export', icon: <Share2 className="h-[18px] w-[18px]" /> },
 ];
 
 const SUBTITLES = {
@@ -85,8 +86,8 @@ export default function StudentPortal() {
     >
       {vault.loading ? (
         <div className="flex items-center justify-center gap-3 py-12">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-          <span className="text-sm text-gray-500">Loading your vault…</span>
+          <Loader2 className="h-5 w-5 animate-spin text-brand-600" />
+          <span className="text-sm text-content-secondary">Loading your vault…</span>
         </div>
       ) : (
         <div key={tab} className="animate-fade-in">

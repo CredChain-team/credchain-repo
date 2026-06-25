@@ -6,6 +6,9 @@
 // ─────────────────────────────────────────────────────────────
 
 import { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronDown, Copy, Check, ExternalLink, QrCode } from 'lucide-react';
+import { Card, Button, EmptyState } from '../ui';
 
 // Deterministic 21×21 "QR-like" grid from a string — a believable mock.
 function MockQR({ value, size = 132 }) {
@@ -29,11 +32,11 @@ function MockQR({ value, size = 132 }) {
       const on = finder
         ? !((x === 0 || x === 6 || y === 0 || y === 6) === false && !(x >= 2 && x <= 4 && y >= 2 && y <= 4))
         : next() > 0.55;
-      if (on) rects.push(<rect key={`${x}-${y}`} x={x * cell} y={y * cell} width={cell} height={cell} fill="#1e3a8a" />);
+      if (on) rects.push(<rect key={`${x}-${y}`} x={x * cell} y={y * cell} width={cell} height={cell} fill="#4F46E5" />);
     }
   }
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="rounded-lg bg-white p-1">
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="rounded-md bg-white p-1">
       {rects}
     </svg>
   );
@@ -63,62 +66,82 @@ export default function ShareExportDrawer({ user, verified = [] }) {
   }
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-card">
+    <Card padding="lg">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900">Share &amp; Export</h3>
+        <h3 className="text-sm font-bold text-content-primary">Share &amp; Export</h3>
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className="rounded-xl px-3 py-2 text-sm font-medium text-blue-600 transition-colors duration-150 hover:bg-blue-50"
+          className="rounded-md p-2 text-content-secondary transition-colors hover:bg-bg-sunken hover:text-content-primary"
+          aria-label={open ? 'Collapse' : 'Expand'}
         >
-          <span className={`inline-block transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>⌄</span>
+          <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
         </button>
       </div>
 
-      {open && (
-        <div className="mt-4 space-y-4 border-t border-gray-100 pt-4 animate-fade-in">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Public verification link</p>
-            <div className="mt-2 flex items-center gap-2">
-              <input
-                readOnly
-                value={link}
-                className="min-w-0 flex-1 cursor-default select-all truncate rounded-xl border border-gray-300 bg-slate-50 px-3 py-2.5 text-sm text-gray-900"
-              />
-              <button
-                type="button"
-                onClick={copy}
-                className="shrink-0 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 active:scale-[0.97]"
-              >
-                {copied ? 'Copied' : 'Copy'}
-              </button>
-            </div>
-            <p className="mt-3 text-xs text-gray-500">Scan at a career fair (Magic Link / Digital Trust Wallet):</p>
-            <div className="mt-2 flex items-center justify-center rounded-xl border border-gray-200 bg-slate-50 p-6">
-              <MockQR value={link} />
-            </div>
-          </div>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-4 space-y-5 border-t border-border-subtle pt-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-content-muted">Public verification link</p>
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    readOnly
+                    value={link}
+                    className="min-w-0 flex-1 cursor-default select-all truncate rounded-md border border-border-subtle bg-bg-sunken px-3 py-2.5 text-sm text-content-primary"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={copy}
+                    variant={copied ? 'success' : 'primary'}
+                    leftIcon={copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  >
+                    {copied ? 'Copied' : 'Copy'}
+                  </Button>
+                </div>
+                <p className="mt-3 flex items-center gap-1.5 text-xs text-content-secondary">
+                  <QrCode className="h-3.5 w-3.5" /> Scan at a career fair (Magic Link / Digital Trust Wallet):
+                </p>
+                <div className="mt-2 flex items-center justify-center rounded-md border border-border-subtle bg-bg-sunken p-6">
+                  <MockQR value={link} />
+                </div>
+              </div>
 
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-400">One-click LinkedIn export</p>
-            <p className="mt-1 text-xs text-gray-500">Pre-fills LinkedIn’s “Licenses &amp; Certifications”.</p>
-            <div className="mt-2 space-y-2">
-              {verified.length === 0 && <p className="text-sm text-gray-400">No verified credentials to export yet.</p>}
-              {verified.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => linkedInExport(c)}
-                  className="flex w-full items-center justify-between gap-2 rounded-xl bg-[#0A66C2] px-4 py-2.5 text-left text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-[#004182] active:bg-[#003177] active:scale-[0.98]"
-                >
-                  <span className="truncate">{c.title}</span>
-                  <span className="ml-2 shrink-0">in ↗</span>
-                </button>
-              ))}
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-content-muted">One-click LinkedIn export</p>
+                <p className="mt-1 text-xs text-content-secondary">Pre-fills LinkedIn’s “Licenses &amp; Certifications”.</p>
+                <div className="mt-2 space-y-2">
+                  {verified.length === 0 ? (
+                    <EmptyState
+                      title="No credentials to export yet"
+                      description="Verified credentials will appear here, ready to push to LinkedIn."
+                    />
+                  ) : (
+                    verified.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => linkedInExport(c)}
+                        className="flex w-full items-center justify-between gap-2 rounded-md bg-[#0A66C2] px-4 py-2.5 text-left text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-[#004182] active:scale-[0.98]"
+                      >
+                        <span className="truncate">{c.title}</span>
+                        <ExternalLink className="ml-2 h-4 w-4 shrink-0" />
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
-    </section>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </Card>
   );
 }

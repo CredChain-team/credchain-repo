@@ -6,14 +6,12 @@
 // ─────────────────────────────────────────────────────────────
 
 import { useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
+import { Search, Building2 } from 'lucide-react';
 import PublicLayout from './PublicLayout';
 import { PUBLIC_ISSUERS } from '../../mock/data';
-
-const TIER_STYLE = {
-  'T2 · Verified': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  'T3 · Trusted': 'bg-emerald-50 text-emerald-800 border-emerald-300',
-  'T1 · Provisional': 'bg-amber-50 text-amber-700 border-amber-200',
-};
+import { Card, Badge, Input, EmptyState, TrustTier } from '../../components/ui';
+import { stagger, staggerItem } from '../../theme/motion';
 
 export default function PublicIssuerRegistry() {
   const [q, setQ] = useState('');
@@ -28,59 +26,71 @@ export default function PublicIssuerRegistry() {
   return (
     <PublicLayout fullBleed>
       {/* Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-blue-700 py-20 text-center">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[length:24px_24px]" />
+      <div className="relative overflow-hidden bg-grad-brand py-20 text-center">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.12)_1px,transparent_1px)] bg-[length:24px_24px]" />
         <div className="relative px-4">
-          <h1 className="text-4xl font-extrabold tracking-tight text-white">Public Issuer Registry</h1>
-          <p className="mt-3 text-lg text-blue-100">Every verified issuer and its current trust tier. No account needed.</p>
+          <motion.h1
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="text-4xl font-extrabold tracking-tight text-white"
+          >
+            Public Issuer Registry
+          </motion.h1>
+          <p className="mt-3 text-lg text-white/80">Every verified issuer and its current trust tier. No account needed.</p>
           <div className="relative mx-auto mt-8 max-w-xl">
-            <input
+            <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search by name, type, country…"
-              className="w-full rounded-2xl border border-transparent bg-white px-5 py-3.5 text-sm text-gray-900 shadow-lg transition-all duration-150 placeholder:text-gray-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              leftIcon={<Search />}
+              className="h-12 bg-bg-elevated shadow-lg"
             />
           </div>
         </div>
       </div>
 
       {/* Issuer grid */}
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-4 px-6 py-10 sm:grid-cols-2 lg:grid-cols-3">
+      <motion.div
+        variants={stagger(0.04)}
+        initial="initial"
+        animate="animate"
+        className="mx-auto grid max-w-6xl grid-cols-1 gap-4 px-6 py-10 sm:grid-cols-2 lg:grid-cols-3"
+      >
         {filtered.map((i) => (
-          <article
-            key={i.id}
-            className="rounded-2xl border border-gray-200 bg-white p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="truncate font-semibold tracking-tight text-gray-900">{i.name}</p>
-                <p className="mt-0.5 text-xs text-gray-500">{i.type} · {i.country}</p>
+          <motion.div key={i.id} variants={staggerItem}>
+            <Card interactive className="h-full">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold tracking-tight text-content-primary">{i.name}</p>
+                  <p className="mt-0.5 text-xs text-content-secondary">{i.type} · {i.country}</p>
+                </div>
+                <TrustTier tier={i.tier} size="sm" />
               </div>
-              <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${TIER_STYLE[i.tier] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-                {i.tier}
-              </span>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-gray-100 pt-3">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">{i.issued.toLocaleString()}</p>
-                <p className="text-[10px] uppercase tracking-wide text-gray-400">Issued</p>
+              <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border-subtle pt-3">
+                <div>
+                  <p className="text-sm font-bold text-content-primary">{i.issued.toLocaleString()}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-content-muted">Issued</p>
+                </div>
+                <div>
+                  <p className={`text-sm font-bold ${i.disputesUpheld === 0 ? 'text-accent-600' : 'text-warning-500'}`}>{i.disputesUpheld}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-content-muted">Disputes upheld</p>
+                </div>
               </div>
-              <div>
-                <p className={`text-sm font-semibold ${i.disputesUpheld === 0 ? 'text-emerald-600' : 'text-amber-600'}`}>{i.disputesUpheld}</p>
-                <p className="text-[10px] uppercase tracking-wide text-gray-400">Disputes upheld</p>
-              </div>
-            </div>
-          </article>
+            </Card>
+          </motion.div>
         ))}
         {filtered.length === 0 && (
-          <div className="col-span-full flex flex-col items-center justify-center py-14 text-center animate-fade-in">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-2xl">🔍</div>
-            <p className="font-semibold tracking-tight text-gray-900">No issuers match “{q}”</p>
-            <p className="mt-1 max-w-xs text-sm leading-relaxed text-gray-400">Try a different name, type, or country.</p>
+          <div className="col-span-full">
+            <EmptyState
+              icon={Building2}
+              title={`No issuers match “${q}”`}
+              description="Try a different name, type, or country."
+            />
           </div>
         )}
-      </div>
-      <p className="mx-auto max-w-6xl px-6 pb-10 text-xs text-gray-500">
+      </motion.div>
+      <p className="mx-auto max-w-6xl px-6 pb-10 text-xs text-content-muted">
         Trust tiers are earned over a clean track record — no upheld disputes, consistent issuance, positive outcomes. Fame is not a factor.
       </p>
     </PublicLayout>

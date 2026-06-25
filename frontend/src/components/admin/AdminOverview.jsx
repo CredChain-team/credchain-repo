@@ -4,6 +4,11 @@
 // who's awaiting final Tier-4 vetting, and open disputes.
 // ─────────────────────────────────────────────────────────────
 
+import { motion } from 'framer-motion';
+import { BadgeCheck, Hourglass, AlertTriangle, Gavel, Building2, Info } from 'lucide-react';
+import { StatCard, Card } from '../ui';
+import { stagger, staggerItem } from '../../theme/motion';
+
 export default function AdminOverview({ issuers, disputes, onGoTo }) {
   const total = issuers.length;
   const verified = issuers.filter((i) => i.isVerifiedIssuer).length;
@@ -12,34 +17,44 @@ export default function AdminOverview({ issuers, disputes, onGoTo }) {
   const openDisputes = disputes.length;
 
   const cards = [
-    { label: 'Verified issuers', value: verified, accent: true, tab: 'issuers' },
-    { label: 'Awaiting Tier-4 vetting', value: awaitingVetting, warn: awaitingVetting > 0, tab: 'issuers' },
-    { label: 'Issuers with risk flags', value: flagged, tab: 'issuers' },
-    { label: 'Open disputes', value: openDisputes, warn: openDisputes > 0, tab: 'disputes' },
-    { label: 'Total issuer applications', value: total, tab: 'issuers' },
+    { label: 'Verified issuers', value: verified, icon: BadgeCheck, tone: 'brand', tab: 'issuers' },
+    { label: 'Awaiting Tier-4 vetting', value: awaitingVetting, icon: Hourglass, tone: awaitingVetting > 0 ? 'warning' : 'brand', tab: 'issuers' },
+    { label: 'Issuers with risk flags', value: flagged, icon: AlertTriangle, tone: flagged > 0 ? 'danger' : 'brand', tab: 'issuers' },
+    { label: 'Open disputes', value: openDisputes, icon: Gavel, tone: openDisputes > 0 ? 'warning' : 'brand', tab: 'disputes' },
+    { label: 'Total issuer applications', value: total, icon: Building2, tone: 'violet', tab: 'issuers' },
   ];
 
   return (
     <div>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      <motion.div
+        variants={stagger(0.05)}
+        initial="initial"
+        animate="animate"
+        className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5"
+      >
         {cards.map((c) => (
-          <button
+          <motion.button
             key={c.label}
+            variants={staggerItem}
             type="button"
             onClick={() => onGoTo?.(c.tab)}
-            className="rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+            whileHover={{ y: -2 }}
+            className="rounded-lg text-left transition-shadow hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
           >
-            <p className={`text-2xl font-bold tracking-tight ${c.accent ? 'text-blue-600' : c.warn ? 'text-amber-600' : 'text-gray-900'}`}>{c.value}</p>
-            <p className="mt-1 text-[11px] uppercase tracking-wide text-gray-500">{c.label}</p>
-          </button>
+            <StatCard label={c.label} value={c.value} icon={c.icon} tone={c.tone} />
+          </motion.button>
         ))}
-      </div>
+      </motion.div>
 
-      <div className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm leading-relaxed text-blue-800">
-        Your two levers as platform admin: <strong>vet issuers</strong> (the final cross-match that unlocks issuance) and
-        <strong> resolve disputes</strong> (the independent check on revocations). Both are designed so one party can never
-        be judge of its own case.
-      </div>
+      <Card className="mt-5 border-brand-200 bg-brand-soft dark:border-brand-500/30">
+        <div className="flex items-start gap-3 text-sm leading-relaxed text-content-secondary">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
+          <p>
+            Your two levers as platform admin: <strong className="text-content-primary">vet issuers</strong> (the final cross-match that unlocks issuance) and{' '}
+            <strong className="text-content-primary">resolve disputes</strong> (the independent check on revocations). Both are designed so one party can never be judge of its own case.
+          </p>
+        </div>
+      </Card>
     </div>
   );
 }

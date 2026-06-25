@@ -6,9 +6,13 @@
 // ─────────────────────────────────────────────────────────────
 
 import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Loader2, ShieldAlert, PartyPopper, RotateCcw, ShieldX, Quote, CheckCircle2, XCircle } from 'lucide-react';
 import PortalLayout from './PortalLayout';
 import { listDisputes, resolveDispute } from '../services/api';
 import { timeAgo } from '../lib/format';
+import { Card, Badge, Button, EmptyState } from '../components/ui';
+import { fadeUp, stagger, staggerItem } from '../theme/motion';
 
 export default function AdminDisputes() {
   const [disputes, setDisputes] = useState([]);
@@ -46,60 +50,101 @@ export default function AdminDisputes() {
     <PortalLayout title="Dispute Review Queue" subtitle="Independent platform-admin review — not the issuer who revoked.">
       {state === 'loading' && (
         <div className="flex items-center justify-center gap-3 py-12">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-          <span className="text-sm text-gray-500">Loading queue…</span>
+          <Loader2 className="h-5 w-5 animate-spin text-brand-600" />
+          <span className="text-sm text-content-secondary">Loading queue…</span>
         </div>
       )}
+
       {state === 'forbidden' && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm leading-relaxed text-amber-800">
-          This queue is restricted to platform admins (the <code className="font-mono text-[13px]">ADMIN_EMAILS</code> allowlist). Sign in with an admin account to review disputes.
-        </div>
+        <Card padding="lg" className="border-warning-500/30 bg-warning-500/[0.06]">
+          <div className="flex items-start gap-3 text-sm leading-relaxed text-content-secondary">
+            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-warning-500" />
+            <p>
+              This queue is restricted to platform admins (the <code className="rounded bg-bg-sunken px-1 font-mono text-[13px]">ADMIN_EMAILS</code> allowlist). Sign in with an admin account to review disputes.
+            </p>
+          </div>
+        </Card>
       )}
-      {state === 'error' && <p className="text-red-600">Failed to load the dispute queue.</p>}
+
+      {state === 'error' && (
+        <Card padding="lg" className="text-center text-danger-500">Failed to load the dispute queue.</Card>
+      )}
 
       {state === 'ready' && (
         <>
-          {msg && (
-            <div
-              className={`mb-4 flex items-start gap-2 rounded-xl border px-4 py-3 text-sm animate-fade-in ${
-                msg.type === 'ok'
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                  : 'border-red-200 bg-red-50 text-red-700'
-              }`}
-            >
-              <span className="mt-0.5 shrink-0">{msg.type === 'ok' ? '✓' : '✕'}</span>
-              <span>{msg.text}</span>
-            </div>
-          )}
+          <AnimatePresence mode="wait">
+            {msg && (
+              <motion.div
+                key={msg.text}
+                variants={fadeUp}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                className={`mb-4 flex items-start gap-2 rounded-lg border px-4 py-3 text-sm ${
+                  msg.type === 'ok'
+                    ? 'border-accent-500/30 bg-accent-500/[0.08] text-accent-600 dark:text-accent-400'
+                    : 'border-danger-500/30 bg-danger-500/[0.08] text-danger-500'
+                }`}
+              >
+                <span className="mt-0.5 shrink-0">{msg.type === 'ok' ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}</span>
+                <span>{msg.text}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {disputes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-14 text-center animate-fade-in">
-              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-2xl">🎉</div>
-              <p className="font-semibold tracking-tight text-gray-900">No disputes awaiting review</p>
-              <p className="mt-1 max-w-xs text-sm leading-relaxed text-gray-400">The queue is clear. New disputes will appear here.</p>
-            </div>
+            <Card>
+              <EmptyState
+                icon={PartyPopper}
+                title="No disputes awaiting review"
+                description="The queue is clear. New disputes will appear here."
+              />
+            </Card>
           ) : (
-            <div className="space-y-3">
+            <motion.div variants={stagger(0.05)} initial="initial" animate="animate" className="space-y-3">
               {disputes.map((d) => (
-                <div key={d.id} className="rounded-xl border border-gray-200 border-l-4 border-l-amber-400 bg-white p-4 shadow-card transition-shadow duration-200 hover:shadow-card-hover">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-semibold tracking-tight text-gray-900">{d.title}</p>
-                      <p className="text-xs text-gray-500">Issued by {d.issuer} · disputed by {d.student}</p>
+                <motion.div key={d.id} variants={staggerItem}>
+                  <Card className="border-l-4 border-l-warning-500">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-bold tracking-tight text-content-primary">{d.title}</p>
+                        <p className="mt-0.5 text-xs text-content-secondary">
+                          Issued by <span className="font-medium text-content-primary">{d.issuer}</span> · disputed by <span className="font-medium text-content-primary">{d.student}</span>
+                        </p>
+                      </div>
+                      <Badge tone="warning" variant="soft" size="sm">{timeAgo(d.filedAt)}</Badge>
                     </div>
-                    <span className="text-xs text-gray-400">{timeAgo(d.filedAt)}</span>
-                  </div>
-                  <p className="mt-2 rounded-lg border border-gray-200 bg-slate-50 px-3 py-2 text-sm text-gray-700">“{d.reason}”</p>
-                  <div className="mt-3 flex gap-2">
-                    <button type="button" disabled={busyId === d.id} onClick={() => resolve(d.id, 'reinstate')} className="rounded-xl bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 active:scale-[0.97] disabled:opacity-50">
-                      Reinstate credential
-                    </button>
-                    <button type="button" disabled={busyId === d.id} onClick={() => resolve(d.id, 'uphold')} className="rounded-xl bg-red-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-red-700 active:scale-[0.97] disabled:opacity-50">
-                      Uphold revocation
-                    </button>
-                  </div>
-                </div>
+
+                    <div className="mt-3 flex items-start gap-2 rounded-lg border border-border-subtle bg-bg-sunken px-3 py-2.5 text-sm text-content-secondary">
+                      <Quote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-content-muted" />
+                      <span className="italic">{d.reason}</span>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        disabled={busyId === d.id}
+                        loading={busyId === d.id}
+                        leftIcon={<RotateCcw className="h-4 w-4" />}
+                        onClick={() => resolve(d.id, 'reinstate')}
+                      >
+                        Reinstate credential
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        disabled={busyId === d.id}
+                        leftIcon={<ShieldX className="h-4 w-4" />}
+                        onClick={() => resolve(d.id, 'uphold')}
+                      >
+                        Uphold revocation
+                      </Button>
+                    </div>
+                  </Card>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           )}
         </>
       )}

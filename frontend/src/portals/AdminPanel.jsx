@@ -6,11 +6,15 @@
 // ─────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { LayoutDashboard, Building2, Gavel, ShieldAlert, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import PortalLayout from './PortalLayout';
 import { getAdminIssuers, registryCrossMatch, listDisputes, resolveDispute } from '../services/api';
 import AdminOverview from '../components/admin/AdminOverview';
 import IssuerVetting from '../components/admin/IssuerVetting';
 import DisputeQueue from '../components/admin/DisputeQueue';
+import { Card, Badge, Tabs } from '../components/ui';
+import { fadeUp } from '../theme/motion';
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
@@ -67,65 +71,73 @@ export default function AdminPanel() {
     }
   }
 
+  const tabItems = [
+    { value: 'overview', label: 'Overview', icon: <LayoutDashboard /> },
+    { value: 'issuers', label: 'Issuer Vetting', icon: <Building2 /> },
+    { value: 'disputes', label: 'Disputes', icon: <Gavel />, count: disputes.length || undefined },
+  ];
+
   return (
     <PortalLayout title="Platform Admin" subtitle="Vet issuers and resolve disputes — the independent backstop of the trust network.">
       {state === 'loading' && (
         <div className="flex items-center justify-center gap-3 py-12">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-          <span className="text-sm text-gray-500">Loading admin console…</span>
+          <Loader2 className="h-5 w-5 animate-spin text-brand-600" />
+          <span className="text-sm text-content-secondary">Loading admin console…</span>
         </div>
       )}
 
       {state === 'forbidden' && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
-          <p className="font-semibold">Admins only</p>
-          <p className="mt-1 text-sm leading-relaxed">
-            This console is restricted to the <code className="font-mono text-[13px]">ADMIN_EMAILS</code> allowlist in the backend <code className="font-mono text-[13px]">.env</code>.
-            Add your account’s email there (comma-separated) and sign in with it to vet issuers and resolve disputes.
-          </p>
-        </div>
+        <Card padding="lg" className="border-warning-500/30 bg-warning-500/[0.06]">
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-warning-500" />
+            <div>
+              <p className="font-bold text-content-primary">Admins only</p>
+              <p className="mt-1 text-sm leading-relaxed text-content-secondary">
+                This console is restricted to the <code className="rounded bg-bg-sunken px-1 font-mono text-[13px]">ADMIN_EMAILS</code> allowlist in the backend <code className="rounded bg-bg-sunken px-1 font-mono text-[13px]">.env</code>.
+                Add your account’s email there (comma-separated) and sign in with it to vet issuers and resolve disputes.
+              </p>
+            </div>
+          </div>
+        </Card>
       )}
 
-      {state === 'error' && <p className="text-red-600">Failed to load the admin console.</p>}
+      {state === 'error' && (
+        <Card padding="lg" className="text-center text-danger-500">Failed to load the admin console.</Card>
+      )}
 
       {state === 'ready' && (
         <>
           <div className="mb-6 flex items-center gap-3">
-            <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700">Admin Panel</span>
+            <Badge tone="danger" variant="soft" icon={<ShieldAlert />}>Admin Panel</Badge>
           </div>
 
-          <div className="mb-6 flex flex-wrap gap-2 border-b border-gray-200 pb-2">
-            {TABS.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setTab(t.key)}
-                className={`rounded-xl px-3 py-1.5 text-sm font-medium transition-colors duration-150 ${tab === t.key ? 'bg-blue-50 text-blue-700' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+          <Tabs tabs={tabItems} value={tab} onChange={setTab} className="mb-6 max-w-md" />
+
+          <AnimatePresence mode="wait">
+            {msg && (
+              <motion.div
+                key={msg.text}
+                variants={fadeUp}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                className={`mb-4 flex items-start gap-2 rounded-lg border px-4 py-3 text-sm ${
+                  msg.type === 'ok'
+                    ? 'border-accent-500/30 bg-accent-500/[0.08] text-accent-600 dark:text-accent-400'
+                    : 'border-danger-500/30 bg-danger-500/[0.08] text-danger-500'
+                }`}
               >
-                {t.label}
-                {t.key === 'disputes' && disputes.length > 0 && <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 text-[10px] text-amber-700">{disputes.length}</span>}
-              </button>
-            ))}
-          </div>
+                <span className="mt-0.5 shrink-0">{msg.type === 'ok' ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}</span>
+                <span>{msg.text}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          {msg && (
-            <div
-              className={`mb-4 flex items-start gap-2 rounded-xl border px-4 py-3 text-sm animate-fade-in ${
-                msg.type === 'ok'
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                  : 'border-red-200 bg-red-50 text-red-700'
-              }`}
-            >
-              <span className="mt-0.5 shrink-0">{msg.type === 'ok' ? '✓' : '✕'}</span>
-              <span>{msg.text}</span>
-            </div>
-          )}
-
-          <div key={tab} className="animate-fade-in">
+          <motion.div key={tab} variants={fadeUp} initial="initial" animate="animate">
             {tab === 'overview' && <AdminOverview issuers={issuers} disputes={disputes} onGoTo={setTab} />}
             {tab === 'issuers' && <IssuerVetting issuers={issuers} onVet={vet} />}
             {tab === 'disputes' && <DisputeQueue disputes={disputes} onResolve={resolve} />}
-          </div>
+          </motion.div>
         </>
       )}
     </PortalLayout>
