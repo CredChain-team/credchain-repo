@@ -6,6 +6,10 @@
   "author": "Ebukah · Tony · Zhavia · Kuro",
   "license": "MIT",
   "scripts": {
+    "demo": "npm run freeports && npm run seed && concurrently -n backend,frontend,cv-engine,insights -c blue,green,magenta,yellow \"npm:dev:backend\" \"npm:dev:frontend\" \"npm:dev:cv\" \"npm:dev:insights\"",
+    "demo:web": "npm run freeports && npm run seed && concurrently -n backend,frontend -c blue,green \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "seed": "cd backend && npm run seed",
+    "freeports": "npx -y kill-port 3000 5000 8001 8002",
     "dev": "concurrently -k -n backend,frontend,cv-engine,insights -c blue,green,magenta,yellow \"npm:dev:backend\" \"npm:dev:frontend\" \"npm:dev:cv\" \"npm:dev:insights\"",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
