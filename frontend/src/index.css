@@ -1,12 +1,79 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Plus+Jakarta+Sans:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ───────────────────────────── Theme tokens ───────────────────────────── */
 :root {
-  color-scheme: light dark;
+  font-optical-sizing: auto;
+  color-scheme: light;
+
+  --bg-base: #F8FAFC;
+  --bg-elevated: #FFFFFF;
+  --bg-sunken: #F1F5F9;
+  --bg-brand-soft: #EEF2FF;
+  --border-subtle: #E2E8F0;
+  --border-strong: #CBD5E1;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
 }
 
-body {
-  margin: 0;
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+html.dark {
+  color-scheme: dark;
+
+  --bg-base: #020617;
+  --bg-elevated: #0F172A;
+  --bg-sunken: #0B1220;
+  --bg-brand-soft: rgba(99, 102, 241, 0.12);
+  --border-subtle: rgba(148, 163, 184, 0.14);
+  --border-strong: rgba(148, 163, 184, 0.24);
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --text-muted: #64748B;
 }
+
+@layer base {
+  body {
+    margin: 0;
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: 'cv11', 'ss01';
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  html { scroll-behavior: smooth; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  *:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg-base), 0 0 0 4px #6366F1;
+    border-radius: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Shimmer skeleton background */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-sunken) 25%, var(--border-subtle) 37%, var(--bg-sunken) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* Hide scrollbar utility for mobile tab strips */
+.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
+/* Thin styled scrollbar for app panes */
+.scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 9999px; }
+.scroll-thin::-webkit-scrollbar-track { background: transparent; }

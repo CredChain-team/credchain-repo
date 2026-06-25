@@ -22,9 +22,32 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/credchain'
 // ── Express app ──────────────────────────────────────────────
 const app = express();
 
-// CORS: explicitly allow ONLY the frontend origin (http://localhost:3000).
+// CORS: allow the configured frontend origin plus the equivalent dev hosts.
+// Vite runs with host:true, so the same app is reachable at localhost,
+// 127.0.0.1 and the machine's LAN IP — all on port 3000. Browsers treat
+// those as DIFFERENT origins, so we must accept all of them or API calls
+// from (say) http://127.0.0.1:3000 get silently CORS-blocked.
+const STATIC_ALLOWED = new Set([
+  CLIENT_ORIGIN,
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+]);
+
+function isAllowedOrigin(origin) {
+  // No Origin header → same-origin / curl / server-to-server: allow.
+  if (!origin) return true;
+  if (STATIC_ALLOWED.has(origin)) return true;
+  // Any LAN IPv4 host on the frontend port (e.g. http://192.168.1.5:3000).
+  if (/^http:\/\/\d{1,3}(\.\d{1,3}){3}:3000$/.test(origin)) return true;
+  return false;
+}
+
 const corsOptions = {
-  origin: CLIENT_ORIGIN,
+  origin(origin, cb) {
+    return isAllowedOrigin(origin)
+      ? cb(null, true)
+      : cb(new Error(`Origin not allowed by CORS: ${origin}`));
+  },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
@@ -59,6 +82,9 @@ app.get('/health', (_req, res) => {
 
 // ── API routes ───────────────────────────────────────────────
 app.use('/api', apiRoutes);
+// Advanced systems (issuer funnel, two-tier trust, bulk upload, AI proxies,
+// SVG badge, anti-spam chat, on-chain revocation). Legacy /api/* untouched.
+app.use('/api/v1', require('./routes/v1'));
 
 // 404 fallback for unknown routes.
 app.use((req, res) => {
@@ -79,7 +105,11 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: CLIENT_ORIGIN,
+    origin(origin, cb) {
+      return isAllowedOrigin(origin)
+        ? cb(null, true)
+        : cb(new Error(`Origin not allowed by CORS: ${origin}`));
+    },
     methods: ['GET', 'POST'],
     credentials: true,
   },

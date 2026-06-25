@@ -11,7 +11,7 @@ const mongoose = require('mongoose');
 
 const Credential = require('../models/Credential');
 const { computeCredentialHash, buildCredentialHash } = require('../utils/hash');
-const { verifiedBadge, unverifiedBadge } = require('../utils/svgBadge');
+const { verifiedBadge, unverifiedBadge, reviewBadge } = require('../utils/svgBadge');
 
 // GET /api/v1/badge/:credentialId   (PUBLIC)
 async function getBadge(req, res) {
@@ -28,6 +28,12 @@ async function getBadge(req, res) {
     const cred = await Credential.findById(credentialId);
     if (!cred) {
       return res.status(200).send(unverifiedBadge('CredChain'));
+    }
+
+    // A disputed revocation freezes the visible downgrade to amber "Under
+    // Review" until a platform admin resolves it (Section 5.1 / 7).
+    if (cred.dispute && cred.dispute.status === 'under_review') {
+      return res.status(200).send(reviewBadge('CredChain'));
     }
 
     // Revoked credentials are always red.

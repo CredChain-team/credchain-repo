@@ -40,6 +40,64 @@ const studentProfileSchema = new mongoose.Schema(
     // Tier 2 — self-asserted, unverified.
     sandboxSkills: [sandboxSkillSchema],
 
+    // ── Academic status ───────────────────────────────────────────────
+    // Default: 'in_school' — this is the primary CredChain user, not the edge case.
+    academicStatus: {
+      type: String,
+      enum: ['in_school', 'nysc', 'graduate', 'professional'],
+      default: 'in_school',
+    },
+    yearOfStudy:    { type: Number },         // 1–6 (null for non-students)
+    university:     { type: String },
+    course:         { type: String },
+    graduationYear: { type: Number },
+
+    // ── CredScore — 4-component ───────────────────────────────────────
+    credScore: {
+      value:          { type: Number, default: 300 },
+      lastCalculated: { type: Date },
+      breakdown: {
+        pathwayScore:   { type: Number, default: 0 },   // compositeWeight × 200, max 200
+        deliveryScore:  { type: Number, default: 0 },   // min(completed × 15, 300), max 300
+        disputePenalty: { type: Number, default: 0 },   // confirmedAgainst × 40
+        tenureBonus:    { type: Number, default: 0 },   // floor(monthsActive/3) × 10, max 100
+      },
+    },
+
+    // ── Delivery stats ────────────────────────────────────────────────
+    deliveryStats: {
+      total:            { type: Number, default: 0 },
+      completed:        { type: Number, default: 0 },
+      disputed:         { type: Number, default: 0 },
+      confirmedAgainst: { type: Number, default: 0 },
+      totalEarnedSOL:   { type: Number, default: 0 },
+    },
+
+    // ── Skill Discovery / Talent Search ───────────────────────────────
+    // Controls whether this student appears in employer search results
+    discoverable:    { type: Boolean, default: true },
+    // Aggregated skill tags for fast search (denormalised from credentials)
+    skillTags:       [{ type: String }],
+    // Top-level skill categories (e.g. 'Backend', 'Design', 'Data')
+    skillCategories: [{ type: String }],
+    // Highest trust tier across all accepted credentials
+    highestTier: {
+      type: String,
+      enum: ['learner', 'practitioner', 'proven_practitioner', 'expert', 'master'],
+      default: 'learner',
+    },
+    // Location for geo filtering
+    location: {
+      city:    { type: String },
+      country: { type: String, default: 'NG' },
+    },
+    // Short bio shown on search cards (student-written)
+    headline: { type: String },
+    // How many times this profile appeared in employer searches (analytics)
+    searchImpressions: { type: Number, default: 0 },
+    // How many times an employer clicked through to this profile
+    profileViews:      { type: Number, default: 0 },
+
     // Cached market telemetry from the AI Insights engine (:8002).
     aiTelemetry: {
       roleReadinessScore: { type: Number },
@@ -50,5 +108,9 @@ const studentProfileSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// ── Index for talent search ────────────────────────────────────────────
+studentProfileSchema.index({ discoverable: 1, skillTags: 1, highestTier: 1, 'credScore.value': -1 });
+studentProfileSchema.index({ discoverable: 1, skillCategories: 1, 'location.country': 1 });
 
 module.exports = mongoose.model('StudentProfile', studentProfileSchema);

@@ -14,10 +14,12 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Credential = require('../models/Credential');
 const Message = require('../models/Message');
+const StudentProfile = require('../models/StudentProfile');
 
 const { sendCredentialMemo, getMemoExplorerUrl } = require('../config/solana');
 const { buildCredentialHash } = require('../utils/hash');
 const { loadFeePayer } = require('../utils/wallet');
+const { recalculateCredScore, assignTier } = require('../utils/credScore');
 
 const router = express.Router();
 
@@ -169,6 +171,8 @@ function publicCredential(cred) {
     txSignature: cred.txSignature,
     explorerUrl: cred.txSignature ? getMemoExplorerUrl(cred.txSignature) : undefined,
     createdAt: cred.createdAt,
+    revokedAt: cred.revokedAt,
+    dispute: cred.dispute && cred.dispute.status && cred.dispute.status !== 'none' ? cred.dispute : null,
   };
 }
 
@@ -350,7 +354,29 @@ router.post('/credential/accept/:id', async (req, res) => {
     credential.status = 'accepted';
     credential.hash = hash;
     if (txSignature) credential.txSignature = txSignature;
+
+    // 3a. Assign a trust tier from this credential's composite weight.
+    credential.trustTier = assignTier(credential.compositeWeight || 0.2);
     await credential.save();
+
+    // 3b. Recalculate the student's full CredScore from all accepted credentials.
+    if (credential.studentId) {
+      try {
+        const profile = await StudentProfile.findOneAndUpdate(
+          { userId: credential.studentId },
+          {},
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+        const allAccepted = await Credential.find({
+          studentId: credential.studentId,
+          status: 'accepted',
+        });
+        await recalculateCredScore(profile, allAccepted);
+      } catch (scoreErr) {
+        // Score recalculation is non-fatal — the credential is already accepted.
+        console.error('[credential:accept] credScore recalc failed:', scoreErr.message);
+      }
+    }
 
     return res.status(200).json({
       success: true,

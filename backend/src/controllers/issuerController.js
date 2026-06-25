@@ -14,6 +14,7 @@ const crypto = require('crypto');
 const dns = require('dns').promises;
 
 const IssuerProfile = require('../models/IssuerProfile');
+const User = require('../models/User');
 const { extractDomain, isConsumerEmail } = require('../utils/email');
 const { lookupDomainAge } = require('../services/whois');
 
@@ -273,10 +274,41 @@ async function registryCrossMatch(req, res) {
   }
 }
 
+// ── Admin: list every issuer profile (for the vetting console) ───
+// GET /api/v1/admin/issuers   (requireAuth + requireAdmin)
+async function listIssuersForAdmin(_req, res) {
+  try {
+    const profiles = await IssuerProfile.find({}).sort({ updatedAt: -1 });
+    const userIds = profiles.map((p) => p.userId);
+    const users = await User.find({ _id: { $in: userIds } }).select('name email');
+    const byId = new Map(users.map((u) => [String(u._id), u]));
+
+    const issuers = profiles.map((p) => ({
+      userId: p.userId,
+      name: byId.get(String(p.userId))?.name || '—',
+      email: byId.get(String(p.userId))?.email || '—',
+      institutionType: p.institutionType,
+      lockedDomain: p.lockedDomain || null,
+      verificationStatus: p.verificationStatus,
+      isVerifiedIssuer: p.isVerifiedIssuer,
+      riskFlags: p.riskFlags || [],
+      domainAgeMonths: p.domainAgeMonths ?? null,
+      kycStatus: p.kyc?.status || 'none',
+      createdAt: p.createdAt,
+    }));
+
+    return res.status(200).json({ success: true, count: issuers.length, issuers });
+  } catch (err) {
+    console.error('[admin:listIssuers]', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to load issuers.' });
+  }
+}
+
 module.exports = {
   registerIssuerStepOne,
   verifyDomainOwnership,
   submitKyc,
   kycWebhook,
   registryCrossMatch,
+  listIssuersForAdmin,
 };

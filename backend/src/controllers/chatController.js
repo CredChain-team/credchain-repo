@@ -167,4 +167,45 @@ async function sendMessage(req, res) {
   }
 }
 
-module.exports = { initializeConversation, sendMessage, ensureEmployerProfile };
+// GET /api/v1/chat/rooms   (requireAuth)
+// Every conversation the caller participates in, with the other participant's
+// name, the pinned context credential, and the message thread.
+async function listRooms(req, res) {
+  try {
+    const rooms = await ChatRoom.find({ participants: req.user.id }).sort({ updatedAt: -1 });
+
+    const otherIds = [...new Set(rooms.map((r) => r.participants.find((p) => String(p) !== String(req.user.id))).map(String).filter(Boolean))];
+    const credIds = [...new Set(rooms.map((r) => r.contextCredentialId).filter(Boolean).map(String))];
+
+    const Credential = require('../models/Credential');
+    const [users, creds] = await Promise.all([
+      User.find({ _id: { $in: otherIds } }).select('name role'),
+      Credential.find({ _id: { $in: credIds } }).select('title issuer'),
+    ]);
+    const userById = new Map(users.map((u) => [String(u._id), u]));
+    const credById = new Map(creds.map((c) => [String(c._id), c]));
+
+    const shaped = rooms.map((r) => {
+      const otherId = r.participants.find((p) => String(p) !== String(req.user.id));
+      const other = userById.get(String(otherId));
+      const ctx = r.contextCredentialId ? credById.get(String(r.contextCredentialId)) : null;
+      return {
+        id: r._id,
+        otherParticipant: { id: otherId, name: other?.name || 'User', role: other?.role || null },
+        initiatedBy: r.initiatedBy,
+        iInitiated: String(r.initiatedBy) === String(req.user.id),
+        isUnlocked: r.isUnlocked,
+        context: ctx ? { id: ctx._id, title: ctx.title, issuer: ctx.issuer } : null,
+        messages: (r.messages || []).map((m) => ({ from: m.from, text: m.text, sentAt: m.sentAt })),
+        updatedAt: r.updatedAt,
+      };
+    });
+
+    return res.status(200).json({ success: true, count: shaped.length, rooms: shaped });
+  } catch (err) {
+    console.error('[chat:listRooms]', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to load conversations.' });
+  }
+}
+
+module.exports = { initializeConversation, sendMessage, listRooms, ensureEmployerProfile };

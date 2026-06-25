@@ -44,10 +44,47 @@ const credentialSchema = new mongoose.Schema(
     solanaTxSignature: { type: String },
     txSignature: { type: String },
 
+    // ── Trust tier ────────────────────────────────────────────────────
+    // Auto-assigned at acceptance. Upgrades with confirmed deliveries.
+    trustTier: {
+      type: String,
+      enum: ['learner', 'practitioner', 'proven_practitioner', 'expert', 'master'],
+      default: 'learner',
+    },
+
+    // ── Composite weight (drives pathwayScore in CredScore formula) ────
+    // Range 0.0–1.0. Set by pathway type + issuer reputation + tier.
+    compositeWeight: { type: Number, default: 0.2 },
+
+    // ── Delivery count on this specific credential ─────────────────────
+    deliveryCount: { type: Number, default: 0 },
+
+    // ── Skill metadata (drives talent search) ──────────────────────────
+    skillCategory: { type: String, default: 'Other' },
+    skillName:     { type: String },
+    skillTags:     [{ type: String }], // e.g. ['React', 'JavaScript', 'Frontend']
+
     // Revocation trail: a fresh memo carrying `${sha256Hash}:REVOKED`.
     revokedHash: { type: String },
     revokedTxSignature: { type: String },
     revokedAt: { type: Date },
+
+    // Dispute & Appeal trail (Section 5.1). When a student disputes a
+    // revocation, status stays 'revoked' but the VISIBLE downgrade freezes
+    // (badge → amber "Under Review") until an independent platform admin
+    // resolves it — reinstating the credential or upholding the revocation.
+    dispute: {
+      status: {
+        type: String,
+        enum: ['none', 'under_review', 'resolved_reinstated', 'resolved_upheld'],
+        default: 'none',
+      },
+      reason: { type: String },
+      filedAt: { type: Date },
+      resolvedAt: { type: Date },
+      resolvedBy: { type: String },
+      resolutionNotes: { type: String },
+    },
   },
   { timestamps: true }
 );

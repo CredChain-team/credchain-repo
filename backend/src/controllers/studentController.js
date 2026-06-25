@@ -52,6 +52,13 @@ async function getStudentPortfolio(req, res) {
       badgeUrl: `/api/v1/badge/${c._id}`,
       verified: true,
       issuedAt: c.createdAt,
+      // Economy layer per-credential fields.
+      trustTier:       c.trustTier || 'learner',
+      compositeWeight: c.compositeWeight || 0.2,
+      skillCategory:   c.skillCategory || 'Other',
+      skillName:       c.skillName || '',
+      skillTags:       c.skillTags || [],
+      deliveryCount:   c.deliveryCount || 0,
     }));
 
     // Tier 2 — self-asserted, never trusted.
@@ -70,7 +77,21 @@ async function getStudentPortfolio(req, res) {
       counts: { verified: verifiedLedger.length, sandbox: sandboxLedger.length },
       verifiedLedger,
       sandboxLedger,
-      aiTelemetry: profile.aiTelemetry || null,
+      // Economy layer profile fields.
+      credScore: profile.credScore || {
+        value: 300,
+        breakdown: { pathwayScore: 0, deliveryScore: 0, disputePenalty: 0, tenureBonus: 0 },
+      },
+      academicStatus:  profile.academicStatus || 'in_school',
+      yearOfStudy:     profile.yearOfStudy,
+      university:      profile.university,
+      highestTier:     profile.highestTier || 'learner',
+      deliveryStats:   profile.deliveryStats || {},
+      skillTags:       profile.skillTags || [],
+      skillCategories: profile.skillCategories || [],
+      discoverable:    profile.discoverable !== false,
+      headline:        profile.headline || '',
+      aiTelemetry:     profile.aiTelemetry || null,
     });
   } catch (err) {
     console.error('[student:portfolio]', err.message);
@@ -101,4 +122,108 @@ async function addSandboxSkill(req, res) {
   }
 }
 
-module.exports = { getStudentPortfolio, addSandboxSkill, ensureStudentProfile };
+// GET /api/v1/talent/search — the employer-side economy layer.
+//
+// Query params: q, category, tier, country (default NG), status, minScore,
+// maxScore, hasDeliveries, page (1), limit (20, max 50).
+// Returns: { students, total, page, pages, facets }. Only discoverable profiles.
+async function searchTalent(req, res) {
+  try {
+    const {
+      q, category, tier, country = 'NG', status,
+      minScore, maxScore, hasDeliveries,
+      page = 1, limit = 20,
+    } = req.query;
+
+    const TIER_ORDER = ['learner', 'practitioner', 'proven_practitioner', 'expert', 'master'];
+    const query = { discoverable: true };
+
+    // Free text: search skill tags, headline, university, course.
+    if (q) {
+      const regex = new RegExp(q.split(' ').filter(Boolean).join('|'), 'i');
+      query.$or = [
+        { skillTags: regex },
+        { headline: regex },
+        { university: regex },
+        { course: regex },
+      ];
+    }
+
+    if (category) query.skillCategories = category;
+
+    // Minimum tier filter (must meet or exceed).
+    if (tier && TIER_ORDER.includes(tier)) {
+      const minTierIdx = TIER_ORDER.indexOf(tier);
+      query.highestTier = { $in: TIER_ORDER.slice(minTierIdx) };
+    }
+
+    if (country) query['location.country'] = country;
+    if (status) query.academicStatus = status;
+
+    if (minScore || maxScore) {
+      query['credScore.value'] = {};
+      if (minScore) query['credScore.value'].$gte = parseInt(minScore, 10);
+      if (maxScore) query['credScore.value'].$lte = parseInt(maxScore, 10);
+    }
+
+    if (hasDeliveries === 'true') {
+      query['deliveryStats.completed'] = { $gte: 1 };
+    }
+
+    const safeLimit = Math.min(parseInt(limit, 10) || 20, 50);
+    const skip = ((parseInt(page, 10) || 1) - 1) * safeLimit;
+    const total = await StudentProfile.countDocuments(query);
+
+    const profiles = await StudentProfile
+      .find(query)
+      .populate('userId', 'name email avatar')
+      .populate({
+        path: 'verifiedSkills',
+        match: { status: 'accepted' },
+        select: 'title skillName skillCategory trustTier compositeWeight solanaTxSignature txSignature issuer',
+      })
+      .sort({ 'credScore.value': -1, 'deliveryStats.completed': -1 })
+      .skip(skip)
+      .limit(safeLimit)
+      .lean();
+
+    // Increment search impressions in the background (fire-and-forget).
+    StudentProfile.updateMany(
+      { _id: { $in: profiles.map((p) => p._id) } },
+      { $inc: { searchImpressions: 1 } }
+    ).exec();
+
+    // Build facets for the filter sidebar (counts by category, tier, status).
+    const [categoryFacets, tierFacets, statusFacets] = await Promise.all([
+      StudentProfile.aggregate([
+        { $match: { discoverable: true } },
+        { $unwind: '$skillCategories' },
+        { $group: { _id: '$skillCategories', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 15 },
+      ]),
+      StudentProfile.aggregate([
+        { $match: { discoverable: true } },
+        { $group: { _id: '$highestTier', count: { $sum: 1 } } },
+      ]),
+      StudentProfile.aggregate([
+        { $match: { discoverable: true } },
+        { $group: { _id: '$academicStatus', count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      students: profiles,
+      total,
+      page: parseInt(page, 10) || 1,
+      pages: Math.ceil(total / safeLimit),
+      facets: { categories: categoryFacets, tiers: tierFacets, statuses: statusFacets },
+    });
+  } catch (err) {
+    console.error('[talent:search]', err.message);
+    return res.status(500).json({ success: false, error: 'Search failed' });
+  }
+}
+
+module.exports = { getStudentPortfolio, addSandboxSkill, ensureStudentProfile, searchTalent };

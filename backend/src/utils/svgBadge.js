@@ -9,6 +9,7 @@
 const NAVY = '#0f2040';
 const GREEN = '#10b981';
 const RED = '#dc2626';
+const AMBER = '#d97706';
 
 /** Escape text for safe inclusion in SVG. */
 function esc(s) {
@@ -59,4 +60,9 @@ function unverifiedBadge(label = 'CredChain') {
   return badge(label, '\u{1F147} UNVERIFIED / EXPIRED', RED);
 }
 
-module.exports = { verifiedBadge, unverifiedBadge, badge };
+/** Amber "under review" badge — a revocation the student has disputed. */
+function reviewBadge(label = 'CredChain') {
+  return badge(label, '⏳ UNDER REVIEW', AMBER);
+}
+
+module.exports = { verifiedBadge, unverifiedBadge, reviewBadge, badge };
