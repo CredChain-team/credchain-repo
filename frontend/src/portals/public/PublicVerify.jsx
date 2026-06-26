@@ -85,7 +85,7 @@ export default function PublicVerify() {
           {/* Credentials */}
           <motion.h2 variants={staggerItem} className="mt-8 flex items-center gap-2 text-lg font-bold tracking-tight text-content-primary">
             <BadgeCheck className="h-5 w-5 text-brand-600" />
-            Verified credentials
+            Verified skills
           </motion.h2>
 
           <div className="mt-3 space-y-3">
@@ -94,8 +94,8 @@ export default function PublicVerify() {
                 <Card>
                   <EmptyState
                     icon={BadgeCheck}
-                    title="No on-chain credentials yet"
-                    description="This profile has no published, on-chain credentials to show right now."
+                    title="No verified skills yet"
+                    description="This person hasn’t published any verified skills to show right now."
                   />
                 </Card>
               </motion.div>
@@ -130,7 +130,7 @@ export default function PublicVerify() {
                       rel="noreferrer"
                       className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700 hover:underline"
                     >
-                      View on Solana Explorer
+                      See the public record
                       <ExternalLink className="h-3.5 w-3.5" />
                     </a>
                   )}

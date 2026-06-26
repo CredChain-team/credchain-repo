@@ -97,15 +97,15 @@ export default function TalentSearch({ onContact, onInviteToBounty }) {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <Card className="overflow-hidden border-brand-200 bg-gradient-to-r from-brand-50 to-violet-500/10 dark:from-brand-500/10 dark:to-violet-500/10">
+      <Card className="overflow-hidden border-brand-200 bg-gradient-to-r from-brand-50 to-brand-100 dark:from-brand-500/10 dark:to-brand-500/[0.04]">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="flex items-center gap-2 text-base font-bold text-content-primary">
               <ShieldCheck className="h-5 w-5 text-brand-600" /> Search Verified Talent
             </h3>
             <p className="mt-1 max-w-xl text-sm leading-relaxed text-content-secondary">
-              Every profile here has at least one Solana-anchored credential. Search by skill, tier, or delivery history.
-              <strong className="text-brand-700 dark:text-brand-300"> You can hire talent before they graduate.</strong>
+              Everyone here has at least one verified skill you can trust. Search by skill, level, or work history.
+              <strong className="text-brand-700 dark:text-brand-300"> You can hire great people before they even graduate.</strong>
             </p>
           </div>
           <div className="shrink-0 text-right">

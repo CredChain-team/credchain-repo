@@ -49,7 +49,7 @@ export default function TalentFeed({ students, hideUnverified, onToggleHide, onM
         <EmptyState
           icon={Users}
           title="No candidates yet"
-          description="No students with verifiable credentials yet. Check back soon."
+          description="No people with verified skills yet. Check back soon."
         />
       )}
 

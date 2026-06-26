@@ -73,7 +73,7 @@ export default function MicroBounties({ isEmployer = false }) {
 
                 <div className="mt-3 flex items-center gap-1.5 text-[11px] text-content-muted">
                   <Hexagon className="h-3 w-3 text-brand-500" />
-                  <span>Passing earns a Solana-anchored verified credential on completion</span>
+                  <span>Finish it and they earn a verified skill — tamper-proof and theirs to keep</span>
                 </div>
 
                 <Button variant="secondary" size="sm" rightIcon={<ArrowRight className="h-4 w-4" />} className="mt-4">
