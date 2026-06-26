@@ -39,11 +39,11 @@ const NAV = [
 ];
 
 const SUBTITLES = {
-  vault: "Your achievements, verified on Solana — no matter where you're from.",
+  vault: "Your skills and certificates, verified and locked in — no matter where you're from.",
   earn: 'Real companies. Real pay. Your verified skill is the application.',
-  nigeria: 'Country-module features built for the Nigerian credential journey.',
-  messages: "Reply to unlock conversations and refund the recruiter's credit.",
-  share: 'Portable, verifiable proof — share it anywhere.',
+  nigeria: 'Features built for the Nigerian student journey.',
+  messages: 'Reply to open the conversation and give the recruiter their credit back.',
+  share: 'Proof anyone can check — share it anywhere.',
 };
 
 export default function StudentPortal() {
@@ -61,15 +61,15 @@ export default function StudentPortal() {
 
   async function handleDispute(credential) {
     const reason = window.prompt(
-      'Briefly, why is this revocation wrong? This routes to an independent platform-admin review (not back to the issuer).',
-      'Revoked in error — credential is legitimate.'
+      'In a sentence, why is this wrong? An independent CredChain reviewer looks at it — not the school or employer who removed it.',
+      'Removed by mistake — this is real.'
     );
     if (reason === null) return;
     try {
       await disputeCredential(credential.id, reason);
       await vault.refresh();
     } catch (err) {
-      window.alert(err?.response?.data?.message || 'Could not file the dispute.');
+      window.alert(err?.response?.data?.message || 'Could not send your request.');
     }
   }
 
@@ -87,7 +87,7 @@ export default function StudentPortal() {
       {vault.loading ? (
         <div className="flex items-center justify-center gap-3 py-12">
           <Loader2 className="h-5 w-5 animate-spin text-brand-600" />
-          <span className="text-sm text-content-secondary">Loading your vault…</span>
+          <span className="text-sm text-content-secondary">Loading your skills…</span>
         </div>
       ) : (
         <div key={tab} className="animate-fade-in">
@@ -118,7 +118,7 @@ export default function StudentPortal() {
               />
               <VerificationPathways
                 onSelectPathway={(pathway) => {
-                  if (pathway === 'platform') window.alert('Connect a platform — OAuth flow');
+                  if (pathway === 'platform') window.alert('Connect an account to import your skills');
                   if (pathway === 'institutional') setTab('nigeria');
                 }}
               />
@@ -133,8 +133,8 @@ export default function StudentPortal() {
               onApply={(bounty) => {
                 window.alert(
                   `Applied for "${bounty.title}" from ${bounty.company}.\n\n` +
-                  `The employer will review your CredScore (${score}) and your verified credentials. ` +
-                  `If selected, payment of ${bounty.reward} will be locked in Solana escrow before you start.`
+                  `The employer will look at your CredScore (${score}) and your verified skills. ` +
+                  `If they pick you, the ${bounty.reward} payment is held safely up front before you start — so you know you'll get paid.`
                 );
               }}
             />

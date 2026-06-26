@@ -68,7 +68,15 @@ export default function ShareExportDrawer({ user, verified = [] }) {
   return (
     <Card padding="lg">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-content-primary">Share &amp; Export</h3>
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bg-brand-soft text-brand-600">
+            <QrCode className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-content-primary">Share &amp; export</h3>
+            <p className="text-[11px] text-content-muted">A link and code anyone can check</p>
+          </div>
+        </div>
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
@@ -90,7 +98,7 @@ export default function ShareExportDrawer({ user, verified = [] }) {
           >
             <div className="mt-4 space-y-5 border-t border-border-subtle pt-4">
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-content-muted">Public verification link</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-content-muted">Your shareable proof link</p>
                 <div className="mt-2 flex items-center gap-2">
                   <input
                     readOnly
@@ -107,7 +115,7 @@ export default function ShareExportDrawer({ user, verified = [] }) {
                   </Button>
                 </div>
                 <p className="mt-3 flex items-center gap-1.5 text-xs text-content-secondary">
-                  <QrCode className="h-3.5 w-3.5" /> Scan at a career fair (Magic Link / Digital Trust Wallet):
+                  <QrCode className="h-3.5 w-3.5" /> Let someone scan this at a job fair to see your verified skills:
                 </p>
                 <div className="mt-2 flex items-center justify-center rounded-md border border-border-subtle bg-bg-sunken p-6">
                   <MockQR value={link} />
@@ -115,13 +123,13 @@ export default function ShareExportDrawer({ user, verified = [] }) {
               </div>
 
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-content-muted">One-click LinkedIn export</p>
-                <p className="mt-1 text-xs text-content-secondary">Pre-fills LinkedIn’s “Licenses &amp; Certifications”.</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-content-muted">Add to LinkedIn in one click</p>
+                <p className="mt-1 text-xs text-content-secondary">Fills in LinkedIn’s “Licenses &amp; Certifications” for you.</p>
                 <div className="mt-2 space-y-2">
                   {verified.length === 0 ? (
                     <EmptyState
-                      title="No credentials to export yet"
-                      description="Verified credentials will appear here, ready to push to LinkedIn."
+                      title="No verified skills to add yet"
+                      description="Your verified skills will show up here, ready to add to LinkedIn."
                     />
                   ) : (
                     verified.map((c) => (

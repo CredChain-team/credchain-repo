@@ -46,8 +46,8 @@ export default function OnChainProofModal({ credential, onClose }) {
     <Modal
       open
       onClose={onClose}
-      title={credential.title}
-      description="Solana-anchored, tamper-evident credential record."
+      title="Proof this is real"
+      description={`${credential.title} — saved permanently so it can't be faked or changed.`}
       size="lg"
       footer={
         explorer ? (
@@ -57,17 +57,20 @@ export default function OnChainProofModal({ credential, onClose }) {
             rel="noreferrer"
             className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-brand-600 px-5 text-sm font-semibold text-white transition-all hover:bg-brand-700 hover:shadow-brand"
           >
-            Open in Solana Explorer
+            See the public record
             <ExternalLink className="h-4 w-4" />
           </a>
         ) : (
           <p className="rounded-md border border-border-subtle bg-bg-sunken px-3 py-2 text-center text-xs text-content-muted">
-            Anchored off-chain (no fee-payer wallet configured). The fingerprint is still tamper-evident.
+            Saved with a unique fingerprint that proves it hasn't been changed.
           </p>
         )
       }
     >
-      <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">On-Chain Proof</p>
+      <p className="rounded-xl border border-border-subtle bg-bg-sunken px-4 py-3 text-xs leading-relaxed text-content-secondary">
+        Every verified skill gets a unique fingerprint that's saved permanently. Anyone can check it, and no one can change or fake it. The technical details below are that proof.
+      </p>
+      <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-brand-600">The proof</p>
 
       <OnChainProof
         txSignature={sig || ''}

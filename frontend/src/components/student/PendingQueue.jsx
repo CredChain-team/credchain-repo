@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Inbox, CheckCircle2, XCircle } from 'lucide-react';
+import { Inbox, CheckCircle2, XCircle, BellRing } from 'lucide-react';
 import { timeAgo } from '../../lib/format';
 import { Badge, Button } from '../ui';
 import { stagger, staggerItem } from '../../theme/motion';
@@ -30,12 +30,19 @@ export default function PendingQueue({ pending, onAccept, onReject }) {
   }
 
   return (
-    <section className="rounded-lg border border-brand-200 bg-bg-brand-soft p-5 dark:border-brand-500/30">
-      <div className="mb-1 flex items-center gap-2">
-        <h3 className="text-sm font-bold text-content-primary">Pending Approval Queue</h3>
-        <Badge tone="brand" variant="solid" size="sm">{pending.length}</Badge>
+    <section className="rounded-2xl border border-brand-200 bg-bg-brand-soft p-5 shadow-card dark:border-brand-500/30 sm:p-6">
+      <div className="flex items-start gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bg-elevated text-brand-600">
+          <BellRing className="h-5 w-5" />
+        </div>
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-bold text-content-primary">Waiting for your approval</h3>
+            <Badge tone="brand" variant="solid" size="sm">{pending.length}</Badge>
+          </div>
+          <p className="mt-1 mb-4 text-xs text-content-secondary">Accept to verify and lock it in for good · Reject to remove it. You decide what stays.</p>
+        </div>
       </div>
-      <p className="mb-4 text-xs text-content-secondary">Accept to anchor on Solana · Reject to discard. You control what becomes permanent.</p>
 
       {feedback && (
         <div
@@ -54,7 +61,7 @@ export default function PendingQueue({ pending, onAccept, onReject }) {
         <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
           <Inbox className="h-7 w-7 text-content-muted" />
           <p className="max-w-sm text-sm text-content-secondary">
-            No pending credentials. When a verified issuer sends you one, it appears here for approval.
+            Nothing waiting right now. When a school or employer sends you a verified skill, it shows up here for you to approve.
           </p>
         </div>
       ) : (
@@ -63,11 +70,11 @@ export default function PendingQueue({ pending, onAccept, onReject }) {
             <motion.div
               key={c.id}
               variants={staggerItem}
-              className="rounded-md border border-border-subtle bg-bg-elevated p-3 shadow-sm transition-shadow hover:shadow-md"
+              className="rounded-xl border border-border-subtle bg-bg-elevated p-4 shadow-card transition-shadow hover:shadow-card-hover"
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-content-primary">{c.title}</p>
-                <p className="mt-0.5 truncate text-xs text-content-muted">{c.issuer || 'Verified Issuer'} · {timeAgo(c.createdAt)}</p>
+                <p className="mt-0.5 truncate text-xs text-content-muted">{c.issuer || 'Verified issuer'} · {timeAgo(c.createdAt)}</p>
               </div>
               <div className="mt-3 flex items-center gap-2">
                 <Button size="sm" loading={busyId === c.id} onClick={() => act(c.id, onAccept, 'accepted')}>

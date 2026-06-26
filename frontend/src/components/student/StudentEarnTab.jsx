@@ -30,19 +30,22 @@ export default function StudentEarnTab({ verified = [], credScore = 300, academi
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="overflow-hidden rounded-lg border border-border-subtle bg-grad-hero p-6">
+      <div className="overflow-hidden rounded-2xl border border-border-subtle bg-grad-hero p-6 shadow-card">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
           <div>
             <h3 className="flex items-center gap-2 text-base font-bold text-content-primary">
-              <Coins className="h-5 w-5 text-brand-600" /> Your skill is your application.
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bg-elevated text-brand-600">
+                <Coins className="h-5 w-5" />
+              </span>
+              Your skill is your application.
             </h3>
             <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-content-secondary">
-              Real companies post skill challenges here. You apply with your
-              verified credentials — no CV, no cover letter, no "years of experience required."
-              Payment is locked in Solana escrow before you start.
-              You deliver. SOL hits your wallet.
+              Real companies post paid tasks here. You apply with your
+              verified skills — no CV, no cover letter, no "years of experience required."
+              The payment is held safely up front, so you know you'll get paid.
+              You do the work. The money lands in your wallet.
               {academicStatus === 'in_school' && (
-                <strong className="text-brand-700 dark:text-brand-300"> You can earn right now, from school.</strong>
+                <strong className="text-brand-700 dark:text-brand-300"> You can start earning right now, from school.</strong>
               )}
             </p>
           </div>
@@ -58,7 +61,7 @@ export default function StudentEarnTab({ verified = [], credScore = 300, academi
         {credScore < 450 && (
           <div className="mt-4 flex items-start gap-2 rounded-md border border-warning-500/30 bg-warning-500/10 px-4 py-2.5 text-xs text-warning-500">
             <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>CredScore {credScore}. Verify more skills or complete your first task to unlock higher-paying bounties.</span>
+            <span>CredScore {credScore}. Verify more skills or finish your first task to unlock higher-paying work.</span>
           </div>
         )}
       </div>
@@ -85,7 +88,7 @@ export default function StudentEarnTab({ verified = [], credScore = 300, academi
             <motion.article
               key={b.id}
               variants={staggerItem}
-              className={`rounded-lg border bg-bg-elevated p-5 shadow-sm transition-all hover:shadow-md ${qualifies ? 'border-border-subtle' : 'border-border-subtle opacity-70'}`}
+              className={`rounded-2xl border bg-bg-elevated p-5 shadow-card transition-all hover:shadow-card-hover ${qualifies ? 'border-border-subtle' : 'border-border-subtle opacity-70'}`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -123,9 +126,9 @@ export default function StudentEarnTab({ verified = [], credScore = 300, academi
               {/* Escrow notice */}
               <div className="mt-3 flex items-center gap-2 text-[11px] text-content-muted">
                 <Hexagon className="h-3.5 w-3.5 text-brand-400" />
-                <span>Payment locked in Solana escrow before you start</span>
+                <span>Payment held safely up front, before you start</span>
                 {b.escrowConfirmed && (
-                  <span className="font-medium text-accent-600 dark:text-accent-400">· Escrow confirmed</span>
+                  <span className="font-medium text-accent-600 dark:text-accent-400">· Payment confirmed</span>
                 )}
               </div>
 
@@ -133,7 +136,7 @@ export default function StudentEarnTab({ verified = [], credScore = 300, academi
               {b.credentialAwarded && (
                 <div className="mt-1.5 flex items-center gap-2 text-[11px] text-violet-600 dark:text-violet-400">
                   <Award className="h-3.5 w-3.5" />
-                  <span>Earns: <strong>{b.credentialAwarded}</strong> credential on completion</span>
+                  <span>You'll earn a verified <strong>{b.credentialAwarded}</strong> skill when you finish</span>
                 </div>
               )}
 
@@ -146,7 +149,7 @@ export default function StudentEarnTab({ verified = [], credScore = 300, academi
                   onClick={() => qualifies && onApply?.(b)}
                   rightIcon={qualifies && <ArrowRight className="h-3.5 w-3.5" />}
                 >
-                  {qualifies ? 'Apply with my credentials' : `Need ${reqTier.label} tier`}
+                  {qualifies ? 'Apply with my verified skills' : `Need ${reqTier.label} tier`}
                 </Button>
                 {!qualifies && (
                   <span className="flex items-center gap-1 text-[11px] text-brand-600">
@@ -161,17 +164,17 @@ export default function StudentEarnTab({ verified = [], credScore = 300, academi
 
       {/* How it works */}
       <Card padding="lg" className="bg-bg-sunken">
-        <p className="mb-4 text-xs font-bold text-content-secondary">How CredChain tasks work</p>
+        <p className="mb-4 text-xs font-bold text-content-secondary">How it works</p>
         <div className="grid grid-cols-2 gap-4 text-center text-[11px] sm:grid-cols-4">
           {[
-            ['Apply', Target, 'Your verified credential is the application — no CV needed'],
-            ['Escrow', Hexagon, 'Client locks full payment on Solana before you start work'],
-            ['Deliver', Package, 'Submit your work. Client has 72 hours to confirm or dispute.'],
-            ['Earn', Coins, 'SOL hits your wallet. CredScore rises. Tier may upgrade.'],
+            ['Apply', Target, 'Your verified skill is the application — no CV needed'],
+            ['Held safely', Hexagon, 'The company puts the full payment aside before you start'],
+            ['Deliver', Package, 'Send in your work. The company has 72 hours to confirm.'],
+            ['Get paid', Coins, 'The money lands in your wallet. Your CredScore goes up.'],
           ].map(([step, Icon, desc], i) => (
             <div key={i}>
-              <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-bg-brand-soft text-brand-600">
-                <Icon className="h-4 w-4" />
+              <div className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-xl bg-bg-brand-soft text-brand-600">
+                <Icon className="h-5 w-5" />
               </div>
               <p className="font-bold text-content-primary">{step}</p>
               <p className="mt-0.5 leading-tight text-content-muted">{desc}</p>

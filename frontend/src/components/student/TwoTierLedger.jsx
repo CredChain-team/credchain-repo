@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Vault, Plus } from 'lucide-react';
+import { Vault, Plus, ShieldCheck, Sprout } from 'lucide-react';
 import LedgerCard from './LedgerCard';
 import { Badge, Button, Input, Select, EmptyState } from '../ui';
 import { stagger, staggerItem } from '../../theme/motion';
@@ -39,12 +39,19 @@ export default function TwoTierLedger({ verified, revoked, sandbox, onViewProof,
   return (
     <div className="space-y-6">
       {/* Verified */}
-      <section>
-        <div className="flex items-center gap-2">
-          <h2 className="text-base font-bold tracking-tight text-content-primary">Verified Ledger</h2>
-          <Badge tone="success" variant="soft" size="sm">{ledger.length}</Badge>
+      <section className="rounded-2xl border border-border-subtle bg-bg-elevated p-5 shadow-card sm:p-6">
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bg-brand-soft text-brand-600">
+            <ShieldCheck className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold tracking-tight text-content-primary">Verified skills</h2>
+              <Badge tone="success" variant="soft" size="sm">{ledger.length}</Badge>
+            </div>
+            <p className="mt-1 text-xs text-content-secondary">Confirmed by a school or employer and locked in — can't be faked or changed.</p>
+          </div>
         </div>
-        <p className="mt-1 text-xs text-content-secondary">Issuer-vouched, anchored to Solana. Full lifecycle shown.</p>
         <motion.div
           variants={stagger(0.06)}
           initial="initial"
@@ -54,8 +61,8 @@ export default function TwoTierLedger({ verified, revoked, sandbox, onViewProof,
           {ledger.length === 0 ? (
             <EmptyState
               icon={Vault}
-              title="No verified credentials yet"
-              description="Accept a credential from your pending queue to populate your Verified Ledger."
+              title="No verified skills yet"
+              description="Accept a skill waiting for your approval and it shows up here, verified and locked in."
             />
           ) : (
             ledger.map((c) => (
@@ -68,16 +75,23 @@ export default function TwoTierLedger({ verified, revoked, sandbox, onViewProof,
       </section>
 
       {/* Sandbox */}
-      <section className="rounded-lg border border-dashed border-border-strong bg-bg-sunken p-5">
-        <div className="flex items-center gap-2">
-          <h2 className="text-base font-bold tracking-tight text-content-primary">Sandbox</h2>
-          <Badge tone="neutral" variant="soft" size="sm">{sandbox.length}</Badge>
+      <section className="rounded-2xl border border-dashed border-border-strong bg-bg-sunken p-5 sm:p-6">
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bg-elevated text-content-secondary">
+            <Sprout className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold tracking-tight text-content-primary">Skills you're still proving</h2>
+              <Badge tone="neutral" variant="soft" size="sm">{sandbox.length}</Badge>
+            </div>
+            <p className="mt-1 text-xs text-content-secondary">Skills you've added yourself. Clearly marked — never shown as verified until a school or employer confirms them.</p>
+          </div>
         </div>
-        <p className="mt-1 text-xs text-content-secondary">Self-asserted — honestly labelled, never disguised as verified.</p>
 
-        <div className="mt-3 space-y-2">
+        <div className="mt-4 space-y-2">
           {sandbox.map((s, i) => (
-            <div key={i} className="rounded-md border border-border-subtle bg-bg-elevated p-3 shadow-sm">
+            <div key={i} className="rounded-xl border border-border-subtle bg-bg-elevated p-3.5 shadow-card">
               <p className="text-sm font-medium text-content-primary">{s.skillName}</p>
               <p className="mt-0.5 text-xs text-content-muted">{s.source}{s.link ? ` · ${s.link}` : ''}</p>
             </div>
@@ -85,7 +99,7 @@ export default function TwoTierLedger({ verified, revoked, sandbox, onViewProof,
         </div>
 
         <form onSubmit={submitSandbox} className="mt-4 space-y-2">
-          <p className="text-xs font-medium text-content-secondary">Add a self-taught skill / project</p>
+          <p className="text-xs font-medium text-content-secondary">Add a skill or project you've worked on</p>
           <Input
             value={form.skillName}
             onChange={(e) => setForm((f) => ({ ...f, skillName: e.target.value }))}

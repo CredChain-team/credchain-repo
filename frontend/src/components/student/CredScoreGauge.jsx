@@ -24,10 +24,15 @@ export default function CredScoreGauge({
 
   return (
     <Card padding="lg" className="flex h-full flex-col">
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-sm font-bold tracking-tight text-content-primary">CredScore™</h3>
-          <p className="text-[11px] text-content-muted">Evidence-only · {SCORE_MIN}–{SCORE_MAX} range</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bg-brand-soft text-brand-600">
+            <Hexagon className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold tracking-tight text-content-primary">CredScore™</h3>
+            <p className="text-[11px] text-content-muted">Your skill score — proof of what you can do</p>
+          </div>
         </div>
         <div className="flex flex-col items-end gap-1">
           <span
@@ -92,7 +97,7 @@ export default function CredScoreGauge({
           onClick={() => setOpen((o) => !o)}
           className="flex items-center gap-1 text-xs font-semibold text-brand-600 transition-colors hover:text-brand-700"
         >
-          How to raise your score
+          How to raise my score
           <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
         {open && (
@@ -108,7 +113,7 @@ export default function CredScoreGauge({
       </div>
 
       <p className="mt-3 text-[10px] text-content-muted">
-        Country, school name, and year of study never affect this score.
+        Your country, school name, and year of study never change this score — only what you can do.
       </p>
     </Card>
   );

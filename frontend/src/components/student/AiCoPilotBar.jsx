@@ -36,14 +36,14 @@ export default function AiCoPilotBar({ userId, countryCode = 'NG', telemetry, on
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      setMsg({ type: 'ok', text: 'Verified CV generated from your on-chain credentials.' });
+      setMsg({ type: 'ok', text: 'Your verified CV is ready, built from your verified skills.' });
     } catch (err) {
       const status = err?.response?.status;
       setMsg({
         type: 'err',
         text: status === 409
-          ? 'You need at least one blockchain-verified credential before generating a verified CV.'
-          : 'The CV engine (:8001) is unreachable. Start it, then try again.',
+          ? 'You need at least one verified skill before we can build your verified CV.'
+          : "The CV tool isn't responding right now. Try again in a moment.",
       });
     } finally {
       setCvBusy(false);
@@ -56,9 +56,9 @@ export default function AiCoPilotBar({ userId, countryCode = 'NG', telemetry, on
     try {
       const res = await syncTelemetry({ userId });
       if (res?.aiTelemetry && onTelemetry) onTelemetry(res.aiTelemetry);
-      setMsg({ type: 'ok', text: 'Market telemetry synced.' });
+      setMsg({ type: 'ok', text: 'Job-market insights updated.' });
     } catch {
-      setMsg({ type: 'err', text: 'The Insights engine (:8002) is unreachable. Start it, then try again.' });
+      setMsg({ type: 'err', text: "The insights tool isn't responding right now. Try again in a moment." });
     } finally {
       setTelBusy(false);
     }
@@ -67,17 +67,23 @@ export default function AiCoPilotBar({ userId, countryCode = 'NG', telemetry, on
   return (
     <Card padding="lg" className="flex h-full flex-col">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="flex items-center gap-2 text-sm font-bold text-content-primary">
-          <Sparkles className="h-4 w-4 text-brand-600" /> AI Co-Pilot
-        </h3>
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bg-brand-soft text-brand-600">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-content-primary">AI helper</h3>
+            <p className="text-[11px] text-content-muted">Build a CV and check your job-market fit</p>
+          </div>
+        </div>
         <Badge tone="brand" variant="soft" size="sm">Beta</Badge>
       </div>
 
       <Button fullWidth loading={cvBusy} onClick={downloadCv} leftIcon={!cvBusy && <FileText className="h-4 w-4" />}>
-        {cvBusy ? 'Generating…' : 'Generate Verified CV'}
+        {cvBusy ? 'Building…' : 'Build my verified CV'}
       </Button>
       <Button fullWidth variant="secondary" className="mt-2" loading={telBusy} onClick={runTelemetry} leftIcon={!telBusy && <TrendingUp className="h-4 w-4" />}>
-        {telBusy ? 'Syncing…' : 'Sync Market Telemetry'}
+        {telBusy ? 'Checking…' : 'Check my job-market fit'}
       </Button>
 
       {msg && (

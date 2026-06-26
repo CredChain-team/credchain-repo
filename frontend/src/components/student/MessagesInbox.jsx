@@ -79,11 +79,17 @@ export default function MessagesInbox({ meId }) {
   const unread = rooms.filter((r) => !r.isUnlocked).length;
 
   return (
-    <section className="overflow-hidden rounded-lg border border-border-subtle bg-bg-elevated shadow-sm">
+    <section className="overflow-hidden rounded-2xl border border-border-subtle bg-bg-elevated shadow-card">
       <div className="flex items-center justify-between border-b border-border-subtle px-5 py-4">
-        <h3 className="flex items-center gap-2 text-sm font-bold text-content-primary">
-          <MessageSquare className="h-4 w-4 text-brand-600" /> Messages
-        </h3>
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bg-brand-soft text-brand-600">
+            <MessageSquare className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-content-primary">Messages</h3>
+            <p className="text-[11px] text-content-muted">Recruiters who found your verified skills</p>
+          </div>
+        </div>
         {unread > 0 && <Badge tone="brand" variant="solid" size="sm">{unread}</Badge>}
       </div>
 
@@ -99,7 +105,7 @@ export default function MessagesInbox({ meId }) {
         <EmptyState
           icon={MessageSquare}
           title="No messages yet"
-          description="Recruiters who find your verified credentials can reach out here."
+          description="When a recruiter finds your verified skills, they can message you here."
         />
       )}
 

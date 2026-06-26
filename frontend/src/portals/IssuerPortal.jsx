@@ -17,18 +17,18 @@ import ProofOfSkillPanel from '../components/issuer/ProofOfSkillPanel';
 
 const NAV = [
   { key: 'verify', label: 'Get Verified', icon: '✅' },
-  { key: 'issue', label: 'Issue Credentials', icon: '🎓' },
-  { key: 'bulk', label: 'Bulk Upload', icon: '📤' },
-  { key: 'revoke', label: 'Revocation', icon: '🚫' },
-  { key: 'reputation', label: 'Reputation', icon: '📊' },
+  { key: 'issue', label: 'Award a Skill', icon: '🎓' },
+  { key: 'bulk', label: 'Award in Bulk', icon: '📤' },
+  { key: 'revoke', label: 'Remove a Skill', icon: '🚫' },
+  { key: 'reputation', label: 'Your Results', icon: '📊' },
 ];
 
 const SUBTITLES = {
-  verify: 'The gatekeeper of the Verified Ledger. Fame isn’t the bar — legitimacy is.',
-  issue: 'Mint single credentials or auto-issue from your judging platform.',
-  bulk: 'Issue up to 500 credentials at once, with maker-checker approval.',
-  revoke: 'Correct issuer errors without breaking the ledger’s integrity.',
-  reputation: 'Cohort outcomes you can publish and market with.',
+  verify: 'Get your organisation verified so the skills you award can’t be faked.',
+  issue: 'Award a verified skill to one person, or let your judging platform do it automatically.',
+  bulk: 'Award up to 500 verified skills at once, with a two-person sign-off.',
+  revoke: 'Made a mistake? Remove a verified skill cleanly, with a permanent record of the change.',
+  reputation: 'Real outcomes from your people — ready to share and show off.',
 };
 
 export default function IssuerPortal() {

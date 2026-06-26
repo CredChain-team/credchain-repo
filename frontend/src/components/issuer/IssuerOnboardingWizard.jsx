@@ -43,9 +43,9 @@ function resolveReviewMode(type, country) {
 
 const TIER_LABELS = {
   applied: 'Application received',
-  domain_verified: 'Domain ownership proven',
-  identity_checked: 'Identity (KYC) checked',
-  active: 'Fully vetted — issuance unlocked',
+  domain_verified: 'Email domain confirmed',
+  identity_checked: 'Identity check passed',
+  active: 'Fully verified — you can now award skills',
 };
 
 export default function IssuerOnboardingWizard({ user }) {
@@ -197,7 +197,7 @@ export default function IssuerOnboardingWizard({ user }) {
     try {
       const res = await verifyIssuerDomain();
       setStatus(res.verificationStatus || 'domain_verified');
-      setNotice('Domain ownership verified on-chain of trust (Tier 2 complete).');
+      setNotice('Email domain confirmed — that’s step 2 done.');
       setStep('kyc');
       persist({ step: 'kyc', status: res.verificationStatus || 'domain_verified' });
     } catch (err) {
@@ -240,7 +240,7 @@ export default function IssuerOnboardingWizard({ user }) {
     setTimeout(() => {
       setGithubConnected(true);
       setBusy(false);
-      setNotice('GitHub organization connected. Repo health & your admin rights confirmed.');
+      setNotice('GitHub organisation connected. We’ve confirmed it’s active and that you help run it.');
     }, 600);
   }
 
@@ -292,9 +292,9 @@ export default function IssuerOnboardingWizard({ user }) {
         {/* ── STEP: choose type + country ── */}
         {step === 'choose' && (
           <motion.div variants={fadeUp} initial="initial" animate="animate">
-            <h3 className="text-lg font-bold tracking-tight text-content-primary">What kind of organization are you?</h3>
+            <h3 className="text-lg font-bold tracking-tight text-content-primary">What kind of organisation are you?</h3>
             <p className="mt-1 text-sm leading-relaxed text-content-secondary">
-              Any real, accountable entity qualifies — small or unknown is fine. Fame isn’t the bar; legitimacy is.
+              Any real organisation counts — small or little-known is fine. You don’t need to be famous, just real and accountable.
             </p>
 
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -306,8 +306,8 @@ export default function IssuerOnboardingWizard({ user }) {
                     type="button"
                     onClick={() => setTypeKey(t.key)}
                     className={[
-                      'rounded-lg border-2 p-4 text-center transition-all duration-150 hover:-translate-y-0.5',
-                      active ? 'border-brand-600 bg-brand-soft shadow-sm' : 'border-border-subtle bg-bg-elevated hover:border-brand-300',
+                      'rounded-xl border-2 p-4 text-center transition-all duration-150 hover:-translate-y-0.5',
+                      active ? 'border-brand-600 bg-bg-brand-soft shadow-card' : 'border-border-subtle bg-bg-elevated shadow-sm hover:border-brand-300',
                     ].join(' ')}
                   >
                     <div className="text-2xl">{t.icon}</div>
@@ -339,11 +339,11 @@ export default function IssuerOnboardingWizard({ user }) {
                 <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 {country.automated ? (
                   <span>
-                    {country.flag} {country.countryName}: full registry automation available — domain + DNS + KYC funnel.
+                    {country.flag} {country.countryName}: we can verify you automatically — confirm your email domain and a quick identity check.
                   </span>
                 ) : (
                   <span>
-                    No automated registry for this region yet → graceful fallback to <strong>manual review + footprint check</strong>. A legitimate issuer is never blocked for lacking an integration.
+                    We can’t auto-verify this region yet, so a real person on our team will <strong>review your details and online presence</strong> instead. A genuine organisation is never turned away just because we lack an automatic check here.
                   </span>
                 )}
               </div>
@@ -373,7 +373,7 @@ export default function IssuerOnboardingWizard({ user }) {
                     <Input
                       key={f.name}
                       label={meta.idLabel}
-                      hint={meta.apiAvailable ? 'Automated cross-match available for this country.' : 'Collected for review; no automated check in this region yet.'}
+                      hint={meta.apiAvailable ? 'We can check this automatically for your country.' : 'We’ll use this during review — no automatic check in this region yet.'}
                       value={values[f.name] || ''}
                       onChange={(e) => setField(f.name, e.target.value)}
                       placeholder={meta.placeholder}
@@ -388,10 +388,10 @@ export default function IssuerOnboardingWizard({ user }) {
                         type="file"
                         multiple
                         onChange={(e) => setField(f.name, Array.from(e.target.files || []).map((file) => file.name))}
-                        className="w-full rounded-md border border-border-subtle bg-bg-elevated px-3 py-2 text-sm text-content-secondary file:mr-3 file:rounded-md file:border-0 file:bg-brand-600 file:px-3 file:py-1.5 file:text-white hover:border-border-strong"
+                        className="w-full rounded-lg border border-border-subtle bg-bg-elevated px-3 py-2 text-sm text-content-secondary file:mr-3 file:rounded-md file:border-0 file:bg-brand-600 file:px-3 file:py-1.5 file:text-white hover:border-border-strong"
                       />
                       {names.length > 0 && (
-                        <p className="mt-1 text-xs text-accent-600 dark:text-accent-400">KYB frame: {names.join(', ')}</p>
+                        <p className="mt-1 text-xs text-accent-600 dark:text-accent-400">Attached: {names.join(', ')}</p>
                       )}
                     </FieldShell>
                   );

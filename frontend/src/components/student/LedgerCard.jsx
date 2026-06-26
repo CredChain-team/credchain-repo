@@ -13,8 +13,8 @@ import { Card, Badge, Button } from '../ui';
 
 const STATUS_STYLE = {
   accepted: { tone: 'success', label: 'Verified', icon: CheckCircle2 },
-  revoked: { tone: 'danger', label: 'Revoked', icon: XCircle },
-  under_review: { tone: 'warning', label: 'Under Review', icon: Clock },
+  revoked: { tone: 'danger', label: 'Removed', icon: XCircle },
+  under_review: { tone: 'warning', label: 'Being reviewed', icon: Clock },
 };
 
 export default function LedgerCard({ credential, onViewProof, onDispute }) {
@@ -26,21 +26,21 @@ export default function LedgerCard({ credential, onViewProof, onDispute }) {
   const onChain = Boolean(credential.solanaTxSignature || credential.txSignature);
 
   // Build the lifecycle trail.
-  const trail = [{ label: 'Issued', at: credential.createdAt, done: true }];
+  const trail = [{ label: 'Sent to you', at: credential.createdAt, done: true }];
   if (['accepted', 'revoked'].includes(credential.status) || dispute) {
-    trail.push({ label: 'Accepted · anchored', at: credential.createdAt, done: true });
+    trail.push({ label: 'Accepted · verified & locked in', at: credential.createdAt, done: true });
   }
   if (credential.status === 'revoked') {
-    trail.push({ label: 'Revoked by issuer', at: credential.revokedAt, done: true, danger: true });
+    trail.push({ label: 'Removed by the issuer', at: credential.revokedAt, done: true, danger: true });
   }
   if (underReview) {
-    trail.push({ label: 'Disputed → independent platform review', at: dispute.filedAt, done: true, warn: true });
+    trail.push({ label: 'You asked CredChain to take another look', at: dispute.filedAt, done: true, warn: true });
   }
   if (dispute?.status === 'resolved_reinstated') {
-    trail.push({ label: 'Dispute upheld → reinstated', at: dispute.resolvedAt, done: true });
+    trail.push({ label: 'You were right → put back', at: dispute.resolvedAt, done: true });
   }
   if (dispute?.status === 'resolved_upheld') {
-    trail.push({ label: 'Reviewed → revocation upheld', at: dispute.resolvedAt, done: true, danger: true });
+    trail.push({ label: 'Reviewed → stays removed', at: dispute.resolvedAt, done: true, danger: true });
   }
 
   const canDispute = credential.status === 'revoked' && (!dispute || dispute.status === 'none');
@@ -50,15 +50,15 @@ export default function LedgerCard({ credential, onViewProof, onDispute }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold tracking-tight text-content-primary">{credential.title}</p>
-          <p className="mt-0.5 truncate text-xs text-content-muted">{credential.issuer || 'Verified Issuer'}</p>
+          <p className="mt-0.5 truncate text-xs text-content-muted">{credential.issuer || 'Verified issuer'}</p>
         </div>
         <Badge tone={style.tone} variant="soft" size="sm" icon={<StatusIcon />} className="shrink-0">
           {style.label}
         </Badge>
       </div>
 
-      <div className="mt-2">
-        <img src={badgeUrl(credential.id)} alt="Live verification badge" className="h-6" />
+      <div className="mt-3 inline-flex rounded-lg bg-bg-sunken px-2.5 py-1.5">
+        <img src={badgeUrl(credential.id)} alt="Verified badge" className="h-6" />
       </div>
 
       <ol className="mt-3 space-y-2 border-l-2 border-border-subtle pl-3 text-xs">
@@ -74,20 +74,20 @@ export default function LedgerCard({ credential, onViewProof, onDispute }) {
       {underReview && (
         <div className="mt-3 flex items-start gap-2 rounded-lg border border-warning-500/30 bg-warning-500/10 px-3 py-2 text-xs text-warning-500">
           <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <span>Frozen pending an independent platform-admin decision — not the issuer who revoked it.</span>
+          <span>On hold while an independent CredChain reviewer decides — not the issuer who removed it.</span>
         </div>
       )}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button variant="ghost" size="sm" onClick={() => onViewProof(credential)} rightIcon={<ExternalLink className="h-3.5 w-3.5" />}>
-          View On-Chain Proof
+          See the proof
         </Button>
         {onChain && (
-          <Badge tone="brand" variant="soft" size="sm" icon={<Hexagon />}>On Solana</Badge>
+          <Badge tone="brand" variant="soft" size="sm" icon={<Hexagon />}>Locked in</Badge>
         )}
         {canDispute && (
           <Button variant="danger" size="sm" onClick={() => onDispute(credential)}>
-            Dispute
+            This is wrong
           </Button>
         )}
       </div>
