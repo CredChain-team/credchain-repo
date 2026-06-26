@@ -46,13 +46,13 @@ export default function StatCard({ label, value, delta, icon: Icon, tone = 'bran
       initial={{ opacity: 0, y: 12 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.3 }}
-      className={cn('rounded-lg border border-border-subtle bg-bg-elevated p-5 shadow-sm', className)}
+      className={cn('rounded-xl border border-border-subtle bg-bg-elevated p-5 shadow-card', className)}
     >
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-content-secondary">{label}</span>
+        <span className="text-sm font-semibold text-content-secondary">{label}</span>
         {Icon && (
-          <span className={cn('flex h-9 w-9 items-center justify-center rounded-lg', toneMap[tone])}>
-            <Icon className="h-4.5 w-4.5" style={{ width: 18, height: 18 }} />
+          <span className={cn('flex h-10 w-10 items-center justify-center rounded-xl', toneMap[tone])}>
+            <Icon style={{ width: 20, height: 20 }} />
           </span>
         )}
       </div>

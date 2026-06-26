@@ -9,15 +9,16 @@ const Card = forwardRef(function Card(
   ref
 ) {
   const Comp = interactive ? motion.div : as || 'div';
-  const motionProps = interactive ? { whileHover: { y: -2 }, transition: { duration: 0.2 } } : {};
+  const motionProps = interactive ? { whileHover: { y: -3 }, transition: { duration: 0.2 } } : {};
   return (
     <Comp
       ref={ref}
       {...motionProps}
       className={cn(
-        'rounded-lg border bg-bg-elevated shadow-sm',
-        'border-border-subtle',
-        interactive && 'cursor-pointer hover:shadow-md transition-shadow',
+        // Solid, elevated "box": white in light mode, dark-grey in dark mode,
+        // soft shadow + generous radius (depth, not just a thin outline).
+        'rounded-xl bg-bg-elevated shadow-card border border-border-subtle',
+        interactive && 'cursor-pointer hover:shadow-card-hover transition-shadow',
         selected && 'ring-2 ring-brand-500 border-brand-300',
         PAD[padding],
         className

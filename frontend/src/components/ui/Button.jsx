@@ -13,9 +13,9 @@ const VARIANTS = {
 };
 
 const SIZES = {
-  sm: 'h-9 px-3 text-sm gap-1.5 rounded-md',
-  md: 'h-11 px-5 text-sm gap-2 rounded-md',
-  lg: 'h-12 px-7 text-base gap-2 rounded-lg',
+  sm: 'h-9 px-3.5 text-sm gap-1.5 rounded-lg',
+  md: 'h-11 px-5 text-sm gap-2 rounded-lg',
+  lg: 'h-12 px-7 text-base gap-2 rounded-xl',
 };
 
 const Button = forwardRef(function Button(

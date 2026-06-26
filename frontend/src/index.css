@@ -1,37 +1,46 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Plus+Jakarta+Sans:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800;14..32,900&family=Plus+Jakarta+Sans:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ───────────────────────────── Theme tokens ───────────────────────────── */
+/* ───────────────────────────── Theme tokens ─────────────────────────────
+   Light = white surfaces on a soft blue tint, blue accents.
+   Dark  = near-black base, dark-grey elevated "boxes", white text, blue accents.
+*/
 :root {
   font-optical-sizing: auto;
   color-scheme: light;
 
-  --bg-base: #F8FAFC;
-  --bg-elevated: #FFFFFF;
-  --bg-sunken: #F1F5F9;
-  --bg-brand-soft: #EEF2FF;
-  --border-subtle: #E2E8F0;
-  --border-strong: #CBD5E1;
-  --text-primary: #0F172A;
-  --text-secondary: #475569;
-  --text-muted: #94A3B8;
+  --bg-base: #EEF3FB;        /* soft blue-white page background */
+  --bg-elevated: #FFFFFF;    /* white boxes */
+  --bg-sunken: #E4ECF7;      /* recessed areas / inputs */
+  --bg-brand-soft: #E3EEFF;  /* blue-tinted highlight */
+  --border-subtle: #E2E9F4;
+  --border-strong: #C9D7EC;
+  --text-primary: #0E1B33;
+  --text-secondary: #475677;
+  --text-muted: #8893AC;
+
+  --shadow-color: 37 99 235;     /* blue-tinted shadows in light mode */
+  --shadow-strength: 0.10;
 }
 
 html.dark {
   color-scheme: dark;
 
-  --bg-base: #020617;
-  --bg-elevated: #0F172A;
-  --bg-sunken: #0B1220;
-  --bg-brand-soft: rgba(99, 102, 241, 0.12);
-  --border-subtle: rgba(148, 163, 184, 0.14);
-  --border-strong: rgba(148, 163, 184, 0.24);
-  --text-primary: #F8FAFC;
-  --text-secondary: #CBD5E1;
-  --text-muted: #64748B;
+  --bg-base: #08090D;        /* almost black */
+  --bg-elevated: #15171F;    /* dark-grey box, lifts off the black */
+  --bg-sunken: #0E0F15;
+  --bg-brand-soft: rgba(59, 130, 246, 0.16);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --text-primary: #FFFFFF;
+  --text-secondary: #AEB7C7;
+  --text-muted: #6B7589;
+
+  --shadow-color: 0 0 0;
+  --shadow-strength: 0.5;
 }
 
 @layer base {
@@ -50,8 +59,8 @@ html.dark {
   .tnum { font-variant-numeric: tabular-nums; }
   *:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--bg-base), 0 0 0 4px #6366F1;
-    border-radius: 6px;
+    box-shadow: 0 0 0 2px var(--bg-base), 0 0 0 4px #2563EB;
+    border-radius: 8px;
   }
 }
 
@@ -62,6 +71,15 @@ html.dark {
   }
 }
 
+/* Elevated "box" surface — solid, soft-shadowed, used everywhere */
+.box {
+  background-color: var(--bg-elevated);
+  border-radius: 20px;
+  box-shadow: 0 1px 2px rgb(var(--shadow-color) / calc(var(--shadow-strength) * 0.5)),
+              0 8px 24px rgb(var(--shadow-color) / calc(var(--shadow-strength) * 0.7));
+}
+html.dark .box { border: 1px solid var(--border-subtle); }
+
 /* Shimmer skeleton background */
 .skeleton {
   background: linear-gradient(90deg, var(--bg-sunken) 25%, var(--border-subtle) 37%, var(--bg-sunken) 63%);
@@ -69,11 +87,8 @@ html.dark {
   animation: shimmer 1.6s linear infinite;
 }
 
-/* Hide scrollbar utility for mobile tab strips */
 .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
 .scrollbar-none::-webkit-scrollbar { display: none; }
-
-/* Thin styled scrollbar for app panes */
 .scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
 .scroll-thin::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 9999px; }
 .scroll-thin::-webkit-scrollbar-track { background: transparent; }
