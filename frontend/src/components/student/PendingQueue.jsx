@@ -70,7 +70,7 @@ export default function PendingQueue({ pending, onAccept, onReject }) {
             <motion.div
               key={c.id}
               variants={staggerItem}
-              className="rounded-xl border border-border-subtle bg-bg-elevated p-4 shadow-card transition-shadow hover:shadow-card-hover"
+              className="rounded-xl border border-border-subtle border-l-4 border-l-brand-500 bg-bg-elevated p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover"
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-content-primary">{c.title}</p>

@@ -44,9 +44,14 @@ export default function LedgerCard({ credential, onViewProof, onDispute }) {
   }
 
   const canDispute = credential.status === 'revoked' && (!dispute || dispute.status === 'none');
+  const accentBorder = {
+    success: 'border-l-4 border-l-accent-500',
+    danger: 'border-l-4 border-l-danger-500',
+    warning: 'border-l-4 border-l-warning-500',
+  }[style.tone] || 'border-l-4 border-l-accent-500';
 
   return (
-    <Card interactive padding="md">
+    <Card interactive padding="md" className={accentBorder}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold tracking-tight text-content-primary">{credential.title}</p>

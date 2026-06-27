@@ -29,37 +29,37 @@ export default function StudentEarnTab({ verified = [], credScore = 300, academi
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="overflow-hidden rounded-2xl border border-border-subtle bg-grad-hero p-6 shadow-card">
-        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
+      {/* Header — bold blue hero banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-grad-brand-deep p-6 text-white shadow-brand">
+        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
+        <div className="relative flex flex-col items-start justify-between gap-4 sm:flex-row">
           <div>
-            <h3 className="flex items-center gap-2 text-base font-bold text-content-primary">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bg-elevated text-brand-600">
+            <h3 className="flex items-center gap-2 text-lg font-extrabold text-white">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white backdrop-blur">
                 <Coins className="h-5 w-5" />
               </span>
               Your skill is your application.
             </h3>
-            <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-content-secondary">
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/85">
               Real companies post paid tasks here. You apply with your
               verified skills — no CV, no cover letter, no "years of experience required."
               The payment is held safely up front, so you know you'll get paid.
-              You do the work. The money lands in your wallet.
               {academicStatus === 'in_school' && (
-                <strong className="text-brand-700 dark:text-brand-300"> You can start earning right now, from school.</strong>
+                <strong className="text-white"> You can start earning right now, from school.</strong>
               )}
             </p>
           </div>
           <div className="shrink-0 text-right">
-            <p className="tnum text-3xl font-black text-brand-600">{eligible.length}</p>
-            <p className="text-xs text-content-muted">tasks you qualify for</p>
-            <p className="mt-1 text-[11px] font-medium capitalize text-violet-500">
+            <p className="tnum text-5xl font-black leading-none text-white">{eligible.length}</p>
+            <p className="mt-1 text-xs text-white/70">tasks you qualify for</p>
+            <p className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-semibold capitalize text-white">
               {TIER_CONFIG[studentHighestTier]?.icon} {TIER_CONFIG[studentHighestTier]?.label} tier
             </p>
           </div>
         </div>
 
         {credScore < 450 && (
-          <div className="mt-4 flex items-start gap-2 rounded-md border border-warning-500/30 bg-warning-500/10 px-4 py-2.5 text-xs text-warning-500">
+          <div className="relative mt-4 flex items-start gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-xs text-white/90 backdrop-blur">
             <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>CredScore {credScore}. Verify more skills or finish your first task to unlock higher-paying work.</span>
           </div>
