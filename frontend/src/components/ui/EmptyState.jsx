@@ -11,7 +11,7 @@ export default function EmptyState({ icon, title, description, action, className
       animate="animate"
       className={`flex flex-col items-center justify-center text-center py-14 px-6 ${className || ''}`}
     >
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-soft text-brand-600">
+      <div className="flex h-16 w-16 animate-float items-center justify-center rounded-2xl bg-bg-brand-soft text-brand-600 shadow-card">
         <Icon className="h-7 w-7" />
       </div>
       <h3 className="mt-4 text-base font-bold text-content-primary">{title}</h3>
