@@ -47,29 +47,35 @@ export default function CredScoreGauge({
         </div>
       </div>
 
-      <div className="mt-4 flex items-center gap-5">
-        {/* Radial */}
-        <RadialScore
-          score={score}
-          max={SCORE_MAX}
-          size={150}
-          stroke={13}
-          label={`${SCORE_MIN}–${SCORE_MAX}`}
-          sublabel={band.label}
-          className="shrink-0"
-        />
+      <div className="mt-5 flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+        {/* Radial with soft colored glow */}
+        <div className="relative shrink-0">
+          <div
+            className="pointer-events-none absolute inset-3 rounded-full opacity-20 blur-2xl"
+            style={{ backgroundColor: band.color }}
+          />
+          <RadialScore
+            score={score}
+            max={SCORE_MAX}
+            size={172}
+            stroke={15}
+            label={`${SCORE_MIN}–${SCORE_MAX}`}
+            sublabel={band.label}
+            className="relative"
+          />
+        </div>
 
         {/* Bars */}
-        <div className="flex-1 space-y-2.5">
-          <ComponentBar label="Pathway weight" value={bd.pathwayScore || 0} max={200} color="#818CF8"
-            tip={`${bd.pathwayScore ?? 0}/200 — from your credential evidence quality`} />
-          <ComponentBar label="Delivery score" value={bd.deliveryScore || 0} max={300} color="#22D3EE"
-            tip={`${bd.deliveryScore ?? 0}/300 — each confirmed paid task = +15 pts`} />
-          <ComponentBar label="Tenure bonus" value={bd.tenureBonus || 0} max={100} color="#34D399"
-            tip={`${bd.tenureBonus ?? 0}/100 — +10 every quarter you stay active`} />
+        <div className="w-full flex-1 space-y-3">
+          <ComponentBar label="Pathway weight" value={bd.pathwayScore || 0} max={200} color="#6366F1"
+            desc="from your verified-skill quality" />
+          <ComponentBar label="Delivery score" value={bd.deliveryScore || 0} max={300} color="#06B6D4"
+            desc="each paid task done = +15 pts" />
+          <ComponentBar label="Tenure bonus" value={bd.tenureBonus || 0} max={100} color="#10B981"
+            desc="+10 every 3 months you stay active" />
           {(bd.disputePenalty || 0) > 0 && (
-            <ComponentBar label="Dispute penalty" value={bd.disputePenalty} max={200} color="#F87171"
-              tip={`−${bd.disputePenalty} from disputes ruled against you`} negative />
+            <ComponentBar label="Penalty" value={bd.disputePenalty} max={200} color="#F43F5E"
+              desc="from disputes ruled against you" negative />
           )}
         </div>
       </div>
@@ -119,21 +125,27 @@ export default function CredScoreGauge({
   );
 }
 
-function ComponentBar({ label, value, max, color, tip, negative = false }) {
+function ComponentBar({ label, value, max, color, desc, negative = false }) {
   const pct = Math.min(100, (value / max) * 100);
   return (
-    <div title={tip}>
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] text-content-secondary">{label}</span>
-        <span className="text-[11px] font-semibold text-content-primary">{negative ? '−' : ''}{value}</span>
+    <div className="group">
+      <div className="mb-1 flex items-center justify-between">
+        <span className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+          <span className="text-xs font-semibold text-content-secondary">{label}</span>
+          <span className="hidden text-[10px] text-content-muted group-hover:inline">{desc}</span>
+        </span>
+        <span className="tabular-nums text-xs font-bold text-content-primary">
+          {negative ? '−' : ''}{value}<span className="font-normal text-content-muted">/{max}</span>
+        </span>
       </div>
-      <div className="mt-0.5 h-1.5 w-full overflow-hidden rounded-full bg-bg-sunken">
+      <div className="h-2.5 w-full overflow-hidden rounded-full bg-bg-sunken">
         <motion.div
           className="h-full rounded-full"
-          style={{ backgroundColor: color }}
+          style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}66` }}
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
         />
       </div>
     </div>

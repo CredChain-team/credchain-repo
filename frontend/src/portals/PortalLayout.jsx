@@ -66,7 +66,7 @@ export default function PortalLayout({ title, subtitle, children, navItems = [],
   return (
     <div className="flex min-h-screen flex-col bg-bg-base">
       {/* Topbar */}
-      <header className="sticky top-0 z-40 border-b border-border-subtle bg-bg-elevated/85 backdrop-blur-lg">
+      <header className="glass sticky top-0 z-40 border-b border-border-subtle">
         <div className="flex h-16 items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-3">
             {hasNav && (
@@ -80,7 +80,7 @@ export default function PortalLayout({ title, subtitle, children, navItems = [],
             </Link>
             {role && <Badge tone={ROLE_TONE[role] || 'neutral'} variant="soft" className="hidden capitalize sm:inline-flex">{role}</Badge>}
             {role === 'student' && credScore ? (
-              <Badge tone="success" variant="soft" className="hidden md:inline-flex">CredScore {credScore}</Badge>
+              <Badge tone="success" variant="soft" className={`hidden tabular-nums md:inline-flex ${credScore >= 600 ? 'animate-pulse-ring' : ''}`}>CredScore {credScore}</Badge>
             ) : null}
           </div>
 

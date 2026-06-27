@@ -87,8 +87,17 @@ html.dark .box { border: 1px solid var(--border-subtle); }
   animation: shimmer 1.6s linear infinite;
 }
 
+/* Frosted glass — theme-aware (light: white tint, dark: black tint) */
+.glass {
+  background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Text selection + scrollbars */
+::selection { background: rgb(37 99 235 / 0.18); color: inherit; }
 .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
 .scrollbar-none::-webkit-scrollbar { display: none; }
-.scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
-.scroll-thin::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 9999px; }
-.scroll-thin::-webkit-scrollbar-track { background: transparent; }
+.scroll-thin::-webkit-scrollbar, .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scroll-thin::-webkit-scrollbar-thumb, .scrollbar-thin::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 9999px; }
+.scroll-thin::-webkit-scrollbar-track, .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }

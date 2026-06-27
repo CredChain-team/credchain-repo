@@ -67,7 +67,18 @@ export default function OnChainProofModal({ credential, onClose }) {
         )
       }
     >
-      <p className="rounded-xl border border-border-subtle bg-bg-sunken px-4 py-3 text-xs leading-relaxed text-content-secondary">
+      <div className="flex items-center justify-between rounded-xl border border-accent-500/30 bg-accent-500/[0.07] px-4 py-2.5">
+        <span className="flex items-center gap-2 text-xs font-bold text-accent-600 dark:text-accent-400">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-500 opacity-60" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent-500" />
+          </span>
+          Live &amp; verified
+        </span>
+        <span className="text-[11px] font-medium text-content-muted">Saved permanently · can’t be changed</span>
+      </div>
+
+      <p className="mt-3 rounded-xl border border-border-subtle bg-bg-sunken px-4 py-3 text-xs leading-relaxed text-content-secondary">
         Every verified skill gets a unique fingerprint that's saved permanently. Anyone can check it, and no one can change or fake it. The technical details below are that proof.
       </p>
       <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-brand-600">The proof</p>
@@ -89,10 +100,18 @@ export default function OnChainProofModal({ credential, onClose }) {
       </dl>
 
       <div className="mt-4">
-        <p className="mb-1 text-xs font-medium uppercase tracking-wide text-content-muted">Raw metadata (W3C VC)</p>
-        <pre className="max-h-56 overflow-auto rounded-md border border-border-subtle bg-bg-sunken p-4 font-mono text-[13px] leading-relaxed text-content-secondary scroll-thin">
+        <p className="mb-1 text-xs font-medium uppercase tracking-wide text-content-muted">The full record (for the curious)</p>
+        <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950 shadow-inner-sm">
+          <div className="flex items-center gap-1.5 border-b border-slate-800 px-3 py-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-red-400/70" />
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-400/70" />
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/70" />
+            <span className="ml-2 font-mono text-[10px] text-slate-500">credential.json</span>
+          </div>
+          <pre className="max-h-56 overflow-auto p-4 font-mono text-[12.5px] leading-relaxed text-emerald-300 scroll-thin">
 {JSON.stringify(vc, null, 2)}
-        </pre>
+          </pre>
+        </div>
       </div>
     </Modal>
   );
