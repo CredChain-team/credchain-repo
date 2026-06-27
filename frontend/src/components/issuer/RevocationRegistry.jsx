@@ -116,8 +116,8 @@ export default function RevocationRegistry({ issued = [], onRevoked }) {
       <Modal
         open={!!confirm}
         onClose={() => setConfirm(null)}
-        title="Revoke this credential?"
-        description="This appends :REVOKED on-chain and mints a tamper-proof revocation record. The student can dispute it from their vault."
+        title="Remove this verified skill?"
+        description="This permanently marks the skill as removed and records it so the change can’t be undone or faked. The student can ask for a review if they disagree."
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setConfirm(null)}>Cancel</Button>
