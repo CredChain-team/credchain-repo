@@ -85,6 +85,59 @@ const credentialSchema = new mongoose.Schema(
       resolvedBy: { type: String },
       resolutionNotes: { type: String },
     },
+
+    // ── Global-bounty provenance (audit trail written by selectWinners) ──
+    // Previously selectWinners wrote this block but the schema had no field
+    // for it, so Mongoose strict mode SILENTLY DROPPED the entire anti-fraud
+    // provenance. Declaring it here persists the "how competitive was this
+    // win" evidence, making a suspicious bounty credential disputable later.
+    bounty: {
+      bountyId:         { type: mongoose.Schema.Types.ObjectId, ref: 'Bounty' },
+      sponsorId:        { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      sponsorVerified:  { type: Boolean },
+      submissionCount:  { type: Number },   // real field the winner beat
+      placement:        { type: Number },   // 1 = first
+      competitionFactor:{ type: Number },   // depth multiplier applied to the weight
+      cappedBySponsor:  { type: Boolean },  // was an unvetted-sponsor cap hit?
+    },
+
+    // ── Issuance provenance (Anti-COLLUSION core) ───────────────────────
+    // Snapshot of WHY this credential got the weight it did at mint time.
+    // A lone verified issuer's uncorroborated say-so is capped (see
+    // utils/issuanceWeight.js); higher weight requires real corroboration
+    // (a paid delivery with a real counterparty, or a second issuer). This
+    // block records that reasoning so a bought "master" credential is both
+    // impossible to mint AND legible after the fact.
+    issuance: {
+      issuerTrustScore:       { type: Number },  // issuer's trustScore at mint
+      corroboratingDeliveries:{ type: Number },  // student's confirmed paid deliveries
+      independentIssuerCount: { type: Number },  // distinct OTHER verified issuers attesting
+      cappedUncorroborated:   { type: Boolean }, // true → capped for lack of corroboration
+    },
+
+    // ── Fraud report trail (Anti-COLLUSION) ─────────────────────────────
+    // Distinct from `dispute` (which a STUDENT files to contest a
+    // revocation). A fraud report is filed by ANY authenticated user
+    // (employer/peer) alleging a credential is fake — it routes to the
+    // independent admin queue, NEVER back to the (possibly colluding) issuer.
+    fraudReport: {
+      status: {
+        type: String,
+        enum: ['none', 'under_review', 'resolved_upheld', 'resolved_dismissed'],
+        default: 'none',
+      },
+      reporterId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      reporterRole: { type: String },
+      reason:       { type: String },
+      filedAt:      { type: Date },
+      resolvedAt:   { type: Date },
+      resolvedBy:   { type: String },
+      notes:        { type: String },
+    },
+
+    // Flag set when an issuer is struck: their OTHER recent mints are queued
+    // for precautionary re-review by an admin.
+    needsReview: { type: Boolean, default: false, index: true },
   },
   { timestamps: true }
 );

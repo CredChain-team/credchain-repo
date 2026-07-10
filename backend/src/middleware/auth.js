@@ -102,6 +102,17 @@ async function enforceVerifiedIssuer(req, res, next) {
       });
     }
 
+    // Anti-collusion freeze: a verified issuer with confirmed fraud findings
+    // is suspended pending review and cannot mint or revoke. Passing the
+    // funnel is not a permanent licence — selling fakes freezes the franchise.
+    if (profile.reputation?.suspended) {
+      return res.status(403).json({
+        success: false,
+        message: 'Issuer frozen pending review after a confirmed fraud finding. Contact platform administration.',
+        suspended: true,
+      });
+    }
+
     req.issuerProfile = profile;
     return next();
   } catch (err) {

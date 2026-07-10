@@ -9,6 +9,8 @@ import { Vault, Coins, Flag, MessageSquare, Share2, Loader2 } from 'lucide-react
 import PortalLayout from './PortalLayout';
 import { useAuth } from '../context/AuthContext';
 import { useStudentVault } from '../hooks/useStudentVault';
+import { useBounties } from '../hooks/useBounties';
+import { useToast } from '../components/ui';
 import { computeCredScore } from '../lib/credScore';
 import { disputeCredential } from '../services/api';
 
@@ -19,6 +21,8 @@ import AiCoPilotBar from '../components/student/AiCoPilotBar';
 import PendingQueue from '../components/student/PendingQueue';
 import TwoTierLedger from '../components/student/TwoTierLedger';
 import OnChainProofModal from '../components/student/OnChainProofModal';
+import FindInstitutionModal from '../components/student/FindInstitutionModal';
+import RequestVouchModal from '../components/student/RequestVouchModal';
 import ShareExportDrawer from '../components/student/ShareExportDrawer';
 import MessagesInbox from '../components/student/MessagesInbox';
 import StatementOfResultCard from '../components/student/nigeria/StatementOfResultCard';
@@ -49,8 +53,12 @@ const SUBTITLES = {
 export default function StudentPortal() {
   const { user } = useAuth();
   const vault = useStudentVault(user?.id);
+  const bountyData = useBounties(Boolean(user?.id));
+  const toast = useToast();
   const [proof, setProof] = useState(null);
   const [tab, setTab] = useState('vault');
+  const [findInstitution, setFindInstitution] = useState(false);
+  const [requestVouch, setRequestVouch] = useState(false);
 
   const { score, breakdown, contributions } = useMemo(
     () => computeCredScore(vault.verified),
@@ -70,6 +78,66 @@ export default function StudentPortal() {
       await vault.refresh();
     } catch (err) {
       window.alert(err?.response?.data?.message || 'Could not send your request.');
+    }
+  }
+
+  async function handleDisputeAttested(attestedIndex) {
+    const reason = window.prompt(
+      'In a sentence, why should this vouch be removed? An independent CredChain reviewer looks at it — not the person who vouched.',
+      'This attestation is inaccurate.'
+    );
+    if (reason === null) return;
+    try {
+      await vault.disputeAttested(attestedIndex, reason);
+      toast.success('Dispute filed', { description: 'This attestation is now under independent review.' });
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not file the dispute.');
+    }
+  }
+
+  async function handleApply(bounty) {
+    try {
+      await bountyData.apply(bounty.id);
+      toast.success('Applied!', {
+        description: `The employer will review your verified skills for "${bounty.title}".`,
+      });
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not apply. Please try again.');
+    }
+  }
+
+  async function handleDeliver(application, payload) {
+    try {
+      await bountyData.deliver(application.bounty.id, application.id, payload);
+      toast.success('Delivery submitted', {
+        description: 'The employer has 72 hours to confirm and release payment.',
+      });
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not submit your delivery.');
+      throw err; // let the modal keep the form open
+    }
+  }
+
+  async function handleRespond(bountyId, decision) {
+    try {
+      await bountyData.respondToInvite(bountyId, decision);
+      toast.success(decision === 'accept' ? 'Task accepted' : 'Task declined', {
+        description: decision === 'accept'
+          ? 'Deliver your work when ready — payment is held in escrow.'
+          : 'The employer’s escrow has been refunded.',
+      });
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not respond to the task.');
+    }
+  }
+
+  async function handleRate(bountyId, appId, payload) {
+    try {
+      await bountyData.rate(bountyId, appId, payload);
+      toast.success('Rating submitted', { description: 'Thanks — this helps other students.' });
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not submit your rating.');
+      throw err;
     }
   }
 
@@ -112,14 +180,19 @@ export default function StudentPortal() {
                 verified={vault.verified}
                 revoked={vault.revoked}
                 sandbox={vault.sandbox}
+                attested={vault.attested}
+                studentId={user?.id}
                 onViewProof={setProof}
                 onDispute={handleDispute}
                 onAddSandbox={vault.addSandbox}
+                onDisputeAttested={handleDisputeAttested}
               />
               <VerificationPathways
                 onSelectPathway={(pathway) => {
                   if (pathway === 'platform') window.alert('Connect an account to import your skills');
-                  if (pathway === 'institutional') setTab('nigeria');
+                  if (pathway === 'institutional') setFindInstitution(true);
+                  if (pathway === 'delivery') setTab('earn');
+                  if (pathway === 'peer') setRequestVouch(true);
                 }}
               />
             </div>
@@ -130,13 +203,12 @@ export default function StudentPortal() {
               verified={vault.verified || []}
               credScore={score}
               academicStatus={academicStatus}
-              onApply={(bounty) => {
-                window.alert(
-                  `Applied for "${bounty.title}" from ${bounty.company}.\n\n` +
-                  `The employer will look at your CredScore (${score}) and your verified skills. ` +
-                  `If they pick you, the ${bounty.reward} payment is held safely up front before you start — so you know you'll get paid.`
-                );
-              }}
+              bounties={bountyData.bounties}
+              applications={bountyData.applications}
+              onApply={handleApply}
+              onDeliver={handleDeliver}
+              onRespond={handleRespond}
+              onRate={handleRate}
             />
           )}
 
@@ -156,6 +228,14 @@ export default function StudentPortal() {
       )}
 
       {proof && <OnChainProofModal credential={proof} onClose={() => setProof(null)} />}
+      {findInstitution && <FindInstitutionModal onClose={() => setFindInstitution(false)} />}
+      {requestVouch && (
+        <RequestVouchModal
+          studentId={user?.id}
+          sandbox={vault.sandbox}
+          onClose={() => setRequestVouch(false)}
+        />
+      )}
     </PortalLayout>
   );
 }

@@ -27,6 +27,14 @@ const userSchema = new mongoose.Schema(
     bio: { type: String },
     skills: [{ type: String }],
     links: [{ type: String }],
+
+    // ── Reputation (vouch economy) ────────────────────────────────────
+    // A user's standing on the platform. Only users at/above the vouch
+    // threshold (60) may stake reputation to attest another student's
+    // self-declared skill; each vouch stakes 10 points, forfeited if the
+    // vouch is later upheld as false. Starts low (20) — reputation is
+    // earned, not granted. See controllers/vouchController.js.
+    reputationScore: { type: Number, default: 20, min: 0, max: 100 },
   },
   { timestamps: true }
 );

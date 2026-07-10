@@ -7,12 +7,13 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Building2, Gavel, ShieldAlert, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { LayoutDashboard, Building2, Gavel, ShieldAlert, CheckCircle2, XCircle, Loader2, Inbox } from 'lucide-react';
 import PortalLayout from './PortalLayout';
-import { getAdminIssuers, registryCrossMatch, listDisputes, resolveDispute } from '../services/api';
+import { getAdminIssuers, registryCrossMatch, listDisputes, resolveDispute, getInstitutionRequests, resolveInstitutionRequest } from '../services/api';
 import AdminOverview from '../components/admin/AdminOverview';
 import IssuerVetting from '../components/admin/IssuerVetting';
 import DisputeQueue from '../components/admin/DisputeQueue';
+import InstitutionRequests from '../components/admin/InstitutionRequests';
 import { Card, Badge, Tabs } from '../components/ui';
 import { fadeUp } from '../theme/motion';
 
@@ -20,17 +21,19 @@ const TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'issuers', label: 'Issuer Vetting' },
   { key: 'disputes', label: 'Disputes' },
+  { key: 'institutions', label: 'Institution Requests' },
 ];
 
 export default function AdminPanel() {
   const [tab, setTab] = useState('overview');
   const [issuers, setIssuers] = useState([]);
   const [disputes, setDisputes] = useState([]);
+  const [requests, setRequests] = useState([]);
   const [state, setState] = useState('loading'); // loading | ready | forbidden | error
   const [msg, setMsg] = useState(null);
 
   const load = useCallback(async () => {
-    const [iss, dis] = await Promise.allSettled([getAdminIssuers(), listDisputes()]);
+    const [iss, dis, reqs] = await Promise.allSettled([getAdminIssuers(), listDisputes(), getInstitutionRequests()]);
     const forbidden =
       iss.status === 'rejected' && iss.reason?.response?.status === 403 &&
       dis.status === 'rejected' && dis.reason?.response?.status === 403;
@@ -40,6 +43,7 @@ export default function AdminPanel() {
     }
     if (iss.status === 'fulfilled') setIssuers(iss.value?.issuers || []);
     if (dis.status === 'fulfilled') setDisputes(dis.value?.disputes || []);
+    if (reqs.status === 'fulfilled') setRequests(reqs.value?.requests || []);
     if (iss.status === 'rejected' && dis.status === 'rejected') {
       setState('error');
     } else {
@@ -71,10 +75,23 @@ export default function AdminPanel() {
     }
   }
 
+  async function resolveRequest(id, status) {
+    setMsg(null);
+    try {
+      const res = await resolveInstitutionRequest(id, status);
+      setMsg({ type: 'ok', text: res?.message || 'Updated.' });
+      // Reflect the new status in place (keeps the row visible with its badge).
+      setRequests((prev) => prev.map((r) => (String(r.id) === String(id) ? { ...r, status } : r)));
+    } catch (err) {
+      setMsg({ type: 'err', text: err?.response?.data?.message || 'Could not update the request.' });
+    }
+  }
+
   const tabItems = [
     { value: 'overview', label: 'Overview', icon: <LayoutDashboard /> },
     { value: 'issuers', label: 'Issuer Vetting', icon: <Building2 /> },
     { value: 'disputes', label: 'Disputes', icon: <Gavel />, count: disputes.length || undefined },
+    { value: 'institutions', label: 'Institutions', icon: <Inbox />, count: requests.filter((r) => r.status === 'pending').length || undefined },
   ];
 
   return (
@@ -134,9 +151,10 @@ export default function AdminPanel() {
           </AnimatePresence>
 
           <motion.div key={tab} variants={fadeUp} initial="initial" animate="animate">
-            {tab === 'overview' && <AdminOverview issuers={issuers} disputes={disputes} onGoTo={setTab} />}
+            {tab === 'overview' && <AdminOverview issuers={issuers} disputes={disputes} requests={requests} onGoTo={setTab} />}
             {tab === 'issuers' && <IssuerVetting issuers={issuers} onVet={vet} />}
             {tab === 'disputes' && <DisputeQueue disputes={disputes} onResolve={resolve} />}
+            {tab === 'institutions' && <InstitutionRequests requests={requests} onResolve={resolveRequest} />}
           </motion.div>
         </>
       )}

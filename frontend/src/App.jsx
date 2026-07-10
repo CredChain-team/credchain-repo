@@ -18,6 +18,7 @@ import EquityImpactDashboard from './portals/public/EquityImpactDashboard';
 import PublicVerify from './portals/public/PublicVerify';
 import AdminPanel from './portals/AdminPanel';
 import LandingPage from './pages/LandingPage';
+import VouchPage from './pages/VouchPage';
 
 function RootRedirect() {
   const { isAuthenticated, role } = useAuth();
@@ -38,6 +39,9 @@ export default function App() {
       <Route path="/registry" element={<PublicIssuerRegistry />} />
       <Route path="/impact" element={<EquityImpactDashboard />} />
       <Route path="/verify/student/:credchainId" element={<PublicVerify />} />
+
+      {/* Vouch link target — any signed-in member (gated in-page by reputation) */}
+      <Route path="/vouch/:studentId/:skillIndex" element={<VouchPage />} />
 
       {/* Student namespace */}
       <Route

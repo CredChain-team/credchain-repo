@@ -24,6 +24,35 @@ const sandboxSkillSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// An attested (vouched) skill. Note: NO `{ _id: false }` — each entry keeps
+// its default ObjectId, which is used as the dispute key in the shared admin
+// dispute queue (StudentProfile.findOne({ 'attestedSkills._id': id })).
+const attestedSkillSchema = new mongoose.Schema(
+  {
+    skillName: { type: String, required: true, trim: true },
+    source: { type: String, trim: true },
+    link: { type: String, trim: true },
+    // The high-reputation user who vouched, and the reputation they staked.
+    voucherId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    stakedPoints: { type: Number, default: 10 },
+    vouchedAt: { type: Date, default: Date.now },
+    // Mirrors Credential.dispute EXACTLY (same enum + field names) so the
+    // independent admin queue treats credentials and vouches uniformly.
+    dispute: {
+      status: {
+        type: String,
+        enum: ['none', 'under_review', 'resolved_upheld', 'resolved_reinstated'],
+        default: 'none',
+      },
+      reason: { type: String },
+      filedAt: { type: Date },
+      resolvedAt: { type: Date },
+      resolvedBy: { type: String },
+      resolutionNotes: { type: String },
+    },
+  }
+);
+
 const studentProfileSchema = new mongoose.Schema(
   {
     userId: {
@@ -39,6 +68,16 @@ const studentProfileSchema = new mongoose.Schema(
 
     // Tier 2 — self-asserted, unverified.
     sandboxSkills: [sandboxSkillSchema],
+
+    // Tier 1.5 — ATTESTED skills. A self-declared skill that a
+    // high-reputation user (reputationScore ≥ 60) has staked 10 points to
+    // vouch for. Sits BETWEEN verified (issuer-minted, on-chain) and sandbox
+    // (pure self-claim): it carries partial trust because a real person put
+    // reputation on the line, but it is never equal to an issuer credential.
+    // The `dispute` sub-doc mirrors Credential.dispute exactly so the ONE
+    // independent admin queue (credentialController.listDisputes/resolveDispute)
+    // can adjudicate credentials and vouches uniformly.
+    attestedSkills: [attestedSkillSchema],
 
     // ── Academic status ───────────────────────────────────────────────
     // Default: 'in_school' — this is the primary CredChain user, not the edge case.
@@ -58,6 +97,7 @@ const studentProfileSchema = new mongoose.Schema(
       lastCalculated: { type: Date },
       breakdown: {
         pathwayScore:   { type: Number, default: 0 },   // compositeWeight × 200, max 200
+        attestedBonus:  { type: Number, default: 0 },    // vouched skills × 5, max 15
         deliveryScore:  { type: Number, default: 0 },   // min(completed × 15, 300), max 300
         disputePenalty: { type: Number, default: 0 },   // confirmedAgainst × 40
         tenureBonus:    { type: Number, default: 0 },   // floor(monthsActive/3) × 10, max 100
@@ -93,6 +133,13 @@ const studentProfileSchema = new mongoose.Schema(
     },
     // Short bio shown on search cards (student-written)
     headline: { type: String },
+
+    // ── Marketplace rating (reputation signal ONLY — never in CredScore) ─
+    // Rolling average of the stars employers gave this student after a
+    // confirmed delivery. Shown on talent cards; deliberately excluded from
+    // the evidence-only CredScore formula to avoid subjective bias.
+    ratingAvg:   { type: Number, default: 0 },
+    ratingCount: { type: Number, default: 0 },
     // How many times this profile appeared in employer searches (analytics)
     searchImpressions: { type: Number, default: 0 },
     // How many times an employer clicked through to this profile

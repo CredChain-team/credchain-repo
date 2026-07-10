@@ -304,6 +304,34 @@ async function listIssuersForAdmin(_req, res) {
   }
 }
 
+// ── Public issuer directory ("Find your institution") ────────────
+// GET /api/v1/issuers/directory   (requireAuth — any logged-in user)
+// Backs the student "institutional" pathway button ("Check if my school is set
+// up"). Returns ONLY verified issuers, and ONLY public-safe fields — never risk
+// flags, KYC status, or email. Reuses the listIssuersForAdmin join pattern.
+async function listIssuerDirectory(_req, res) {
+  try {
+    const profiles = await IssuerProfile.find({ isVerifiedIssuer: true }).sort({ updatedAt: -1 });
+    const userIds = profiles.map((p) => p.userId);
+    const users = await User.find({ _id: { $in: userIds } }).select('name');
+    const byId = new Map(users.map((u) => [String(u._id), u]));
+
+    const issuers = profiles.map((p) => ({
+      userId: p.userId,
+      name: byId.get(String(p.userId))?.name || 'Verified Issuer',
+      institutionType: p.institutionType,
+      lockedDomain: p.lockedDomain || null,
+      verificationStatus: p.verificationStatus,
+      isVerifiedIssuer: p.isVerifiedIssuer,
+    }));
+
+    return res.status(200).json({ success: true, count: issuers.length, issuers });
+  } catch (err) {
+    console.error('[issuer:directory]', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to load the institution directory.' });
+  }
+}
+
 module.exports = {
   registerIssuerStepOne,
   verifyDomainOwnership,
@@ -311,4 +339,5 @@ module.exports = {
   kycWebhook,
   registryCrossMatch,
   listIssuersForAdmin,
+  listIssuerDirectory,
 };

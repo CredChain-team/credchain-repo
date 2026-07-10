@@ -13,6 +13,7 @@ import {
   acceptCredential,
   rejectCredential,
   addSandboxSkill,
+  disputeAttestation,
 } from '../services/api';
 
 export function useStudentVault(userId) {
@@ -20,6 +21,7 @@ export function useStudentVault(userId) {
   const [error, setError] = useState(null);
   const [credentials, setCredentials] = useState([]);
   const [sandbox, setSandbox] = useState([]);
+  const [attested, setAttested] = useState([]);
   const [telemetry, setTelemetry] = useState(null);
 
   const refresh = useCallback(async () => {
@@ -39,6 +41,7 @@ export function useStudentVault(userId) {
       }
       if (portfolioRes.status === 'fulfilled') {
         setSandbox(portfolioRes.value?.sandboxLedger || []);
+        setAttested(portfolioRes.value?.attestedLedger || []);
         setTelemetry(portfolioRes.value?.aiTelemetry || null);
       }
       if (studentRes.status === 'rejected' && portfolioRes.status === 'rejected') {
@@ -76,6 +79,12 @@ export function useStudentVault(userId) {
     return res;
   }, [refresh]);
 
+  const disputeAttested = useCallback(async (attestedIndex, reason) => {
+    const res = await disputeAttestation(userId, attestedIndex, reason);
+    await refresh();
+    return res;
+  }, [refresh, userId]);
+
   const pending = credentials.filter((c) => c.status === 'pending');
   const verified = credentials.filter((c) => c.status === 'accepted');
   const revoked = credentials.filter((c) => c.status === 'revoked');
@@ -88,11 +97,13 @@ export function useStudentVault(userId) {
     verified,
     revoked,
     sandbox,
+    attested,
     telemetry,
     setTelemetry,
     refresh,
     accept,
     reject,
     addSandbox,
+    disputeAttested,
   };
 }

@@ -72,6 +72,28 @@ const issuerProfileSchema = new mongoose.Schema(
     },
 
     isVerifiedIssuer: { type: Boolean, default: false, index: true },
+
+    // ── Issuer reputation / skin-in-the-game (Anti-COLLUSION core) ─────
+    // Passing the funnel gets you in the door; it does NOT make your
+    // signature permanently trusted. Every mint stakes reputation. A
+    // confirmed fraud finding strikes the issuer, drops trustScore, and at
+    // the threshold FREEZES the franchise (suspended) and re-reviews the
+    // rest of their mints. Selling one fake credential risks the whole
+    // business — which is the point: a bought signature must be self-
+    // destructing, not a repeatable revenue stream.
+    reputation: {
+      // 0–100. Starts at full trust; drives the issuance-weight ceiling in
+      // utils/issuanceWeight.js (a low-rep issuer mints weaker credentials).
+      trustScore:        { type: Number, default: 100, min: 0, max: 100 },
+      credentialsIssued: { type: Number, default: 0 },
+      // Confirmed fraud findings upheld against this issuer's mints.
+      disputesUpheld:    { type: Number, default: 0 },
+      strikes:           { type: Number, default: 0 },
+      // Frozen from minting/revoking pending review (checked in enforceVerifiedIssuer).
+      suspended:         { type: Boolean, default: false },
+      suspendedAt:       { type: Date },
+      lastStrikeAt:      { type: Date },
+    },
   },
   { timestamps: true }
 );

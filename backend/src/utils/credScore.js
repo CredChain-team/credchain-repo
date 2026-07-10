@@ -4,15 +4,23 @@
  * Range: 300–850 (mirrors FICO scale intentionally — the analogy lands
  * immediately with judges, employers, and users).
  *
- * FOUR COMPONENTS ONLY:
+ * FIVE COMPONENTS:
  *
  *   pathwayScore   = min(totalCompositeWeight, 1.0) × 200     → max 200
+ *   attestedBonus  = min(activeAttestedSkills × 5, 15)        → max 15
  *   deliveryScore  = min(completedDeliveries × 15, 300)        → max 300
  *   disputePenalty = confirmedDisputesAgainst × 40              → no cap
  *   tenureBonus    = floor(monthsActive / 3) × 10               → max 100
  *
- *   raw = 300 + pathwayScore + deliveryScore − disputePenalty + tenureBonus
+ *   raw = 300 + pathwayScore + attestedBonus + deliveryScore − disputePenalty + tenureBonus
  *   final = clamp(raw, 300, 850)
+ *
+ * attestedBonus is a SMALL, HARD-CAPPED (+15 total) contribution from
+ * vouched skills — a high-reputation user staked reputation to attest them.
+ * The cap means collecting many low-effort vouches can't ever equal a single
+ * real issuer credential (which alone can add up to 200 via pathwayScore).
+ * Only ACTIVE vouches count: a vouch under dispute, or upheld as false, is
+ * excluded (frozen) — mirroring how a disputed credential stops counting.
  *
  * NEVER reads: country, university name, year of study, income, or any
  * wealth-correlated proxy. Evidence only. A 200-level student with 5
@@ -45,6 +53,15 @@ async function recalculateCredScore(profile, acceptedCredentials = []) {
   );
 
   const pathwayScore   = Math.round(totalWeight * 200);
+
+  // Attested (vouched) skills — small, capped, and only while ACTIVE. A vouch
+  // that is under review or upheld-as-false is frozen out (does not count),
+  // exactly like a disputed credential. Capped at +15 so it can't be farmed.
+  const activeAttested = (profile.attestedSkills || []).filter(
+    (a) => !['under_review', 'resolved_upheld'].includes(a?.dispute?.status)
+  );
+  const attestedBonus  = Math.min(15, activeAttested.length * 5);
+
   const completed      = profile.deliveryStats?.completed || 0;
   const deliveryScore  = Math.min(300, completed * 15);
   const confirmedAgainst = profile.deliveryStats?.confirmedAgainst || 0;
@@ -52,7 +69,7 @@ async function recalculateCredScore(profile, acceptedCredentials = []) {
   const months         = monthsActive(profile.createdAt);
   const tenureBonus    = Math.min(100, Math.floor(months / 3) * 10);
 
-  const raw   = SCORE_MIN + pathwayScore + deliveryScore - disputePenalty + tenureBonus;
+  const raw   = SCORE_MIN + pathwayScore + attestedBonus + deliveryScore - disputePenalty + tenureBonus;
   const value = Math.max(SCORE_MIN, Math.min(SCORE_MAX, raw));
 
   // Update highest tier
@@ -73,7 +90,7 @@ async function recalculateCredScore(profile, acceptedCredentials = []) {
   profile.credScore = {
     value,
     lastCalculated: new Date(),
-    breakdown: { pathwayScore, deliveryScore, disputePenalty, tenureBonus },
+    breakdown: { pathwayScore, attestedBonus, deliveryScore, disputePenalty, tenureBonus },
   };
   profile.highestTier      = highestTier;
   profile.skillTags        = allTags;

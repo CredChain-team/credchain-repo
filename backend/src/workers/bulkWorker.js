@@ -54,42 +54,46 @@ async function processBulkJob(io, jobId, issuerId, rows) {
   };
   emit('bulk:start');
 
-  for (let i = 0; i < rows.length; i += 1) {
-    const row = rows[i] || {};
-    const title = row.title || row.credential || row.name;
-    const recipientEmail = (row.recipientemail || row.email || '').toLowerCase();
+  try {
+    for (let i = 0; i < rows.length; i += 1) {
+      const row = rows[i] || {};
+      const title = row.title || row.credential || row.name;
+      const recipientEmail = (row.recipientemail || row.email || '').toLowerCase();
 
-    try {
-      if (!title) throw new Error('missing "title" column');
+      try {
+        if (!title) throw new Error('missing "title" column');
 
-      // Build the doc first so createdAt exists for the hash, then persist.
-      const doc = new Credential({
-        title,
-        issuerId,
-        recipientEmail,
-        issuer: row.issuer || undefined,
-        status: 'pending',
-      });
-      doc.sha256Hash = computeCredentialHash(doc);
-      doc.hash = doc.sha256Hash; // keep legacy alias in sync
-      await doc.save();
+        // Build the doc first so createdAt exists for the hash, then persist.
+        const doc = new Credential({
+          title,
+          issuerId,
+          recipientEmail,
+          issuer: row.issuer || undefined,
+          status: 'pending',
+        });
+        doc.sha256Hash = computeCredentialHash(doc);
+        doc.hash = doc.sha256Hash; // keep legacy alias in sync
+        await doc.save();
 
-      job.processed += 1;
-    } catch (rowErr) {
-      job.failed += 1;
-      job.errors.push({ row: i + 1, reason: rowErr.message });
+        job.processed += 1;
+      } catch (rowErr) {
+        job.failed += 1;
+        job.errors.push({ row: i + 1, reason: rowErr.message });
+      }
+
+      job.percent = Math.round(((job.processed + job.failed) / job.total) * 100);
+      emit('bulk:progress');
+
+      // Yield to the event loop so a huge sheet never blocks other requests.
+      if (i % 25 === 0) await new Promise((r) => setImmediate(r));
     }
-
-    job.percent = Math.round(((job.processed + job.failed) / job.total) * 100);
-    emit('bulk:progress');
-
-    // Yield to the event loop so a huge sheet never blocks other requests.
-    if (i % 25 === 0) await new Promise((r) => setImmediate(r));
+  } finally {
+    // Always signal completion — even if the loop throws unexpectedly — so
+    // the issuer's UI never hangs on "processing" forever.
+    job.status = 'complete';
+    job.finishedAt = new Date().toISOString();
+    emit('bulk:complete');
   }
-
-  job.status = 'complete';
-  job.finishedAt = new Date().toISOString();
-  emit('bulk:complete');
 
   return job;
 }

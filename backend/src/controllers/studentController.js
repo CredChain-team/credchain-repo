@@ -70,12 +70,35 @@ async function getStudentPortfolio(req, res) {
       addedAt: s.addedAt,
     }));
 
+    // Tier 1.5 — ATTESTED: a self-declared skill a high-reputation user staked
+    // reputation to vouch for. Partial trust — between verified and sandbox.
+    const attestedRaw = profile.attestedSkills || [];
+    const voucherIds = [...new Set(attestedRaw.map((a) => String(a.voucherId)).filter(Boolean))];
+    const vouchers = voucherIds.length
+      ? await User.find({ _id: { $in: voucherIds } }).select('name')
+      : [];
+    const voucherById = new Map(vouchers.map((u) => [String(u._id), u]));
+    const attestedLedger = attestedRaw.map((a, i) => ({
+      index: i,
+      id: a._id,
+      skillName: a.skillName,
+      source: a.source || 'Self-taught',
+      link: a.link || null,
+      voucherId: a.voucherId,
+      voucherName: voucherById.get(String(a.voucherId))?.name || 'A verified voucher',
+      stakedPoints: a.stakedPoints,
+      vouchedAt: a.vouchedAt,
+      disputeStatus: a.dispute?.status || 'none',
+      attested: true,
+    }));
+
     return res.status(200).json({
       success: true,
       message: 'Portfolio fetched.',
       student: { id: user._id, name: user.name, credchainId: user.credchainId },
-      counts: { verified: verifiedLedger.length, sandbox: sandboxLedger.length },
+      counts: { verified: verifiedLedger.length, attested: attestedLedger.length, sandbox: sandboxLedger.length },
       verifiedLedger,
+      attestedLedger,
       sandboxLedger,
       // Economy layer profile fields.
       credScore: profile.credScore || {
@@ -191,7 +214,7 @@ async function searchTalent(req, res) {
     StudentProfile.updateMany(
       { _id: { $in: profiles.map((p) => p._id) } },
       { $inc: { searchImpressions: 1 } }
-    ).exec();
+    ).exec().catch((e) => console.error('[talent:search] impression bump failed:', e.message));
 
     // Build facets for the filter sidebar (counts by category, tier, status).
     const [categoryFacets, tierFacets, statusFacets] = await Promise.all([

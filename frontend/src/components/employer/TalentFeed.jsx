@@ -1,17 +1,18 @@
 // ─────────────────────────────────────────────────────────────
 // CredChain — Trust-First Talent Feed (Section 4.2)
 // Real students from /api/v1/employer/talent-feed. CredScore is computed
-// client-side from verifiable evidence only (no bias proxies). "Hide
-// Unverified" drops sandbox claims; "Who Issued This?" chips link to the
-// Public Issuer Registry; per-candidate Verification Report export.
+// client-side from verifiable evidence only (no bias proxies). A 3-way trust
+// filter (Verified only / Verified + Attested / Everything) gates which skill
+// groups render per card; "Who Issued This?" chips link to the Public Issuer
+// Registry; per-candidate Verification Report export.
 // ─────────────────────────────────────────────────────────────
 
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Users, MessageSquare, FileText, Download, ExternalLink, BadgeCheck, FlaskConical } from 'lucide-react';
+import { Users, MessageSquare, FileText, Download, ExternalLink, BadgeCheck, FlaskConical, Handshake } from 'lucide-react';
 import { computeCredScore } from '../../lib/credScore';
 import { downloadJson, printReport } from '../../lib/verificationReport';
-import { Card, Avatar, Badge, Button, Switch, SkeletonCard, EmptyState } from '../ui';
+import { Card, Avatar, Badge, Button, SkeletonCard, EmptyState } from '../ui';
 import { stagger, staggerItem } from '../../theme/motion';
 
 function reportCandidate(student, score) {
@@ -22,20 +23,51 @@ function reportCandidate(student, score) {
     credScore: score,
     globalTrustPass: false,
     verified: (student.verified || []).map((v) => ({ title: v.title, issuer: v.issuer, tier: 'Verified issuer', onChain: v.onChain })),
+    attested: student.attested || [],
     sandbox: student.sandbox || [],
   };
 }
 
-export default function TalentFeed({ students, hideUnverified, onToggleHide, onMessage, employerName, loading }) {
+// The three discrete trust views. Matches the existing UI's on/off language —
+// a display filter, not a continuous score multiplier.
+const VIEWS = [
+  { key: 'verified', label: 'Verified only' },
+  { key: 'attested', label: 'Verified + Attested' },
+  { key: 'all', label: 'Everything' },
+];
+
+const VIEW_NOTE = {
+  verified: 'Strict mode: showing only issuer-backed, Solana-anchored credentials.',
+  attested: 'Showing verified credentials plus reputation-backed vouches (Attested).',
+  all: 'Showing everything, including self-declared skills the student hasn’t had verified.',
+};
+
+export default function TalentFeed({ students, skillView = 'all', onChangeView, onMessage, employerName, loading }) {
+  const showAttested = skillView === 'attested' || skillView === 'all';
+  const showSandbox = skillView === 'all';
+
   return (
     <section>
-      {/* Filter bar */}
-      <Card padding="sm" className="mb-5 inline-flex items-center">
-        <Switch checked={hideUnverified} onChange={onToggleHide} label="Hide unverified skills" />
-      </Card>
-      {hideUnverified && (
-        <p className="-mt-2 mb-4 text-xs text-brand-600">Strict mode: showing only issuer-backed, Solana-anchored credentials.</p>
-      )}
+      {/* 3-way trust filter */}
+      <div className="mb-5">
+        <div className="inline-flex rounded-xl border border-border-subtle bg-bg-elevated p-1 shadow-card">
+          {VIEWS.map((v) => (
+            <button
+              key={v.key}
+              type="button"
+              onClick={() => onChangeView?.(v.key)}
+              className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                skillView === v.key
+                  ? 'bg-brand-600 text-white shadow-sm'
+                  : 'text-content-secondary hover:text-content-primary'
+              }`}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-brand-600">{VIEW_NOTE[skillView]}</p>
+      </div>
 
       {loading && (
         <div className="space-y-4">
@@ -57,6 +89,7 @@ export default function TalentFeed({ students, hideUnverified, onToggleHide, onM
         <motion.div variants={stagger(0.05)} initial="initial" animate="animate" className="space-y-4">
           {students.map((s) => {
             const { score } = computeCredScore(s.verified);
+            const attested = s.attested || [];
             return (
               <motion.div key={s.id} variants={staggerItem}>
                 <Card interactive className="group p-5">
@@ -93,7 +126,17 @@ export default function TalentFeed({ students, hideUnverified, onToggleHide, onM
                     ))}
                   </div>
 
-                  {!hideUnverified && s.sandbox?.length > 0 && (
+                  {showAttested && attested.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {attested.map((skill, i) => (
+                        <Badge key={i} tone="violet" variant="soft" icon={<Handshake />}>
+                          {skill} <span className="ml-1 text-[10px] opacity-80">attested</span>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+
+                  {showSandbox && s.sandbox?.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {s.sandbox.map((skill, i) => (
                         <span key={i} className="inline-flex items-center gap-1 rounded-full border border-border-subtle bg-bg-sunken px-2.5 py-0.5 text-[10px] text-content-secondary">

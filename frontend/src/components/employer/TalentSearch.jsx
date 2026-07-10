@@ -9,13 +9,50 @@
  * This is the piece that makes CredChain a two-sided marketplace,
  * not just a student certificate storage app.
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, X, GraduationCap, Hexagon, ExternalLink, MessageSquare, Target, ShieldCheck, BookOpen } from 'lucide-react';
+import { Search, X, GraduationCap, Hexagon, ExternalLink, MessageSquare, Target, ShieldCheck, BookOpen, Star } from 'lucide-react';
 import { TALENT_FEED, SKILL_CATEGORIES } from '../../mock/data';
 import { TIER_CONFIG, TIER_ORDER, scoreBand } from '../../lib/credScore';
+import { searchTalent } from '../../services/api';
 import { Card, Badge, Button, Input, Select } from '../ui';
+import AssignTaskModal from './AssignTaskModal';
 import { stagger, staggerItem } from '../../theme/motion';
+
+// Country code → flag emoji for the talent card.
+const COUNTRY_FLAG = { NG: '🇳🇬', KE: '🇰🇪', GH: '🇬🇭', ZA: '🇿🇦', US: '🇺🇸', GB: '🇬🇧' };
+
+// Adapt a server StudentProfile (populated userId + verifiedSkills) into the
+// flat shape TalentCard renders.
+function adaptProfile(p) {
+  const user = p.userId && typeof p.userId === 'object' ? p.userId : {};
+  return {
+    id: user._id || p.userId,
+    name: user.name || 'Student',
+    flag: COUNTRY_FLAG[p.location?.country] || '',
+    headline: p.headline || '',
+    credScore: p.credScore?.value ?? 300,
+    highestTier: p.highestTier || 'learner',
+    academicStatus: p.academicStatus || 'in_school',
+    yearOfStudy: p.yearOfStudy,
+    university: p.university,
+    course: p.course,
+    deliveries: p.deliveryStats?.completed || 0,
+    totalEarnedSOL: p.deliveryStats?.totalEarnedSOL || 0,
+    ratingAvg: p.ratingAvg || 0,
+    ratingCount: p.ratingCount || 0,
+    skillTags: p.skillTags || [],
+    skillCategories: p.skillCategories || [],
+    discoverable: true,
+    verified: (p.verifiedSkills || []).map((c) => ({
+      title: c.title,
+      issuer: c.issuer || 'Verified Issuer',
+      tier: c.trustTier || 'learner',
+      onChain: Boolean(c.solanaTxSignature || c.txSignature),
+    })),
+    sandbox: [],
+  };
+}
 
 const ACADEMIC_FILTERS = [
   { value: 'all',          label: 'All students'        },
@@ -36,9 +73,27 @@ export default function TalentSearch({ onContact, onInviteToBounty }) {
   const [minScore,       setMinScore]      = useState('');
   const [sortBy,         setSortBy]        = useState('score');
   const [expanded,       setExpanded]      = useState(null);
+  const [feed,           setFeed]          = useState(TALENT_FEED);
+  const [assignTo,       setAssignTo]      = useState(null); // student being assigned a direct task
+
+  // Load real verified students once; keep the rich client-side filtering
+  // below. Falls back to the mock feed if the request fails or returns none.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const data = await searchTalent({ limit: 50 });
+        const students = (data?.students || []).map(adaptProfile);
+        if (alive && students.length) setFeed(students);
+      } catch {
+        /* keep the mock feed — the tab is never empty */
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   const results = useMemo(() => {
-    let pool = TALENT_FEED.filter(s => s.discoverable !== false);
+    let pool = feed.filter(s => s.discoverable !== false);
 
     // Free text: search name, headline, skill tags, university
     if (query.trim()) {
@@ -90,35 +145,36 @@ export default function TalentSearch({ onContact, onInviteToBounty }) {
     }
 
     return pool;
-  }, [query, tierFilter, statusFilter, categoryFilter, deliveriesOnly, minScore, sortBy]);
+  }, [feed, query, tierFilter, statusFilter, categoryFilter, deliveriesOnly, minScore, sortBy]);
 
   const inSchoolCount = results.filter(s => s.academicStatus === 'in_school').length;
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <Card className="overflow-hidden border-brand-200 bg-gradient-to-r from-brand-50 to-brand-100 dark:from-brand-500/10 dark:to-brand-500/[0.04]">
-        <div className="flex items-start justify-between gap-4">
+      {/* Header — dark premium banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 to-[#0f1e35] p-6 shadow-lg">
+        <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-brand-500/20 blur-2xl" />
+        <div className="relative flex items-start justify-between gap-4">
           <div>
-            <h3 className="flex items-center gap-2 text-base font-bold text-content-primary">
-              <ShieldCheck className="h-5 w-5 text-brand-600" /> Search Verified Talent
+            <h3 className="flex items-center gap-2 text-lg font-extrabold text-white">
+              <ShieldCheck className="h-5 w-5 text-brand-300" /> Search verified talent
             </h3>
-            <p className="mt-1 max-w-xl text-sm leading-relaxed text-content-secondary">
+            <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-slate-300">
               Everyone here has at least one verified skill you can trust. Search by skill, level, or work history.
-              <strong className="text-brand-700 dark:text-brand-300"> You can hire great people before they even graduate.</strong>
+              <strong className="text-white"> You can hire great people before they even graduate.</strong>
             </p>
           </div>
           <div className="shrink-0 text-right">
-            <p className="tnum text-2xl font-black text-brand-600">{results.length}</p>
-            <p className="text-xs text-content-muted">verified profiles</p>
+            <p className="tnum text-4xl font-black leading-none text-white">{results.length}</p>
+            <p className="mt-1 text-xs text-slate-400">verified profiles</p>
             {inSchoolCount > 0 && (
-              <p className="mt-0.5 text-[11px] font-medium text-violet-600 dark:text-violet-400">
+              <p className="mt-1 text-[11px] font-medium text-brand-300">
                 {inSchoolCount} currently in school
               </p>
             )}
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Search bar */}
       <div className="flex items-center gap-2">
@@ -218,7 +274,7 @@ export default function TalentSearch({ onContact, onInviteToBounty }) {
                 expanded={expanded === student.id}
                 onToggle={() => setExpanded(expanded === student.id ? null : student.id)}
                 onContact={() => onContact?.(student)}
-                onInvite={() => onInviteToBounty?.(student)}
+                onInvite={() => setAssignTo(student)}
               />
             </motion.div>
           ))}
@@ -235,6 +291,13 @@ export default function TalentSearch({ onContact, onInviteToBounty }) {
           Post a bounty to find and test talent before anyone else does.
         </p>
       </Card>
+
+      {/* Direct "live task" assignment */}
+      <AssignTaskModal
+        student={assignTo}
+        onClose={() => setAssignTo(null)}
+        onAssigned={() => setAssignTo(null)}
+      />
     </div>
   );
 }
@@ -290,6 +353,11 @@ function TalentCard({ student, expanded, onToggle, onContact, onInvite }) {
           {student.totalEarnedSOL > 0 && (
             <span className="text-[11px] font-medium text-brand-600">
               ◎ {student.totalEarnedSOL} SOL earned
+            </span>
+          )}
+          {student.ratingCount > 0 && (
+            <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-amber-500">
+              <Star className="h-3 w-3 fill-current" /> {student.ratingAvg} ({student.ratingCount})
             </span>
           )}
         </div>
@@ -352,7 +420,7 @@ function TalentCard({ student, expanded, onToggle, onContact, onInvite }) {
               Send message
             </Button>
             <Button size="sm" variant="secondary" onClick={onInvite} leftIcon={<Target className="h-4 w-4" />}>
-              Invite to bounty
+              Assign a task
             </Button>
             <a
               href={`/verify/student/${student.id}`}

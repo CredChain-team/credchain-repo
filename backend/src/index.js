@@ -115,7 +115,7 @@ const io = new Server(server, {
   },
 });
 
-// Make the io instance available to routes/controllers via app locals.
+
 app.set('io', io);
 
 io.on('connection', (socket) => {
@@ -129,7 +129,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Realtime chat relay.
+  // Realtime chat relay
   socket.on('chat:message', (payload) => {
     const { to } = payload || {};
     if (to) {
@@ -166,7 +166,7 @@ async function start() {
 
 start();
 
-// Graceful shutdown.
+// Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\n[shutdown] closing server...');
   await mongoose.connection.close().catch(() => {});

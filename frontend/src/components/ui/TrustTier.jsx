@@ -1,4 +1,4 @@
-import { CircleDashed, Shield, ShieldCheck, BadgeCheck, Crown } from 'lucide-react';
+import { CircleDashed, Shield, ShieldCheck, BadgeCheck, Crown, Handshake } from 'lucide-react';
 import Badge from './Badge';
 
 export const TRUST_TIERS = [
@@ -26,6 +26,34 @@ export default function TrustTier({ tier, size = 'md', variant = 'soft', classNa
   return (
     <Badge tone={t.tone} variant={variant} size={size} icon={<Icon />} className={className}>
       {t.label}
+    </Badge>
+  );
+}
+
+// The three self-upload trust states, as reusable badges. "Attested" is the new
+// middle state — a self-declared skill a high-reputation user staked reputation
+// to vouch for. It sits visually and semantically between Verified (issuer,
+// on-chain) and Self-declared (unverified sandbox).
+export function AttestedBadge({ size = 'sm', variant = 'soft', className }) {
+  return (
+    <Badge tone="violet" variant={variant} size={size} icon={<Handshake />} className={className}>
+      Attested
+    </Badge>
+  );
+}
+
+export function VerifiedBadge({ size = 'sm', variant = 'soft', className }) {
+  return (
+    <Badge tone="brand" variant={variant} size={size} icon={<ShieldCheck />} className={className}>
+      Verified
+    </Badge>
+  );
+}
+
+export function SelfDeclaredBadge({ size = 'sm', variant = 'soft', className }) {
+  return (
+    <Badge tone="neutral" variant={variant} size={size} icon={<CircleDashed />} className={className}>
+      Self-declared
     </Badge>
   );
 }

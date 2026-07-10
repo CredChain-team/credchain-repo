@@ -29,6 +29,9 @@ const chat = require('../controllers/chatController');
 const credential = require('../controllers/credentialController');
 const auth = require('../controllers/authController');
 const employer = require('../controllers/employerController');
+const bounty = require('../controllers/bountyController');
+const vouch = require('../controllers/vouchController');
+const institution = require('../controllers/institutionController');
 
 const mongoose = require('mongoose');
 
@@ -83,6 +86,13 @@ router.post('/credential/:id/dispute', requireAuth, requireRole('student'), cred
 router.get('/admin/disputes', requireAuth, requireAdmin, credential.listDisputes);
 router.post('/admin/disputes/:id/resolve', requireAuth, requireAdmin, credential.resolveDispute);
 
+// ── Fraud reporting (Anti-COLLUSION): ANY authed user reports a credential
+// as fraudulent → independent admin queue (never back to the issuer). Upheld
+// findings cascade: revoke + student penalty + issuer strike/suspend.
+router.post('/credential/:id/report-fraud', requireAuth, credential.reportCredentialFraud);
+router.get('/admin/fraud-reports', requireAuth, requireAdmin, credential.listFraudReports);
+router.post('/admin/fraud-reports/:id/resolve', requireAuth, requireAdmin, credential.resolveFraudReport);
+
 // ── Employer talent feed (real students) ─────────────────────
 router.get('/employer/talent-feed', requireAuth, requireRole('employer'), employer.talentFeed);
 
@@ -94,8 +104,54 @@ router.get('/issuer/bulk/:jobId', requireAuth, bulk.getBulkJobStatus);
 router.get('/student/:userId/portfolio', requireAuth, student.getStudentPortfolio);
 router.post('/student/sandbox-skill', requireAuth, requireRole('student'), student.addSandboxSkill);
 
+// ── Vouch economy (self-upload trust bridge) ─────────────────
+// A high-reputation user (≥60) stakes 10 points to attest a student's sandbox
+// skill; the owning student can dispute an attestation → SAME admin queue.
+router.post('/student/:studentId/sandbox/:skillIndex/vouch', requireAuth, vouch.vouchSandboxSkill);
+router.post('/attested/:studentId/:attestedIndex/dispute', requireAuth, requireRole('student'), vouch.disputeAttestation);
+
+// ── Public issuer directory ("Find your institution") ────────
+// Verified issuers only, public-safe projection (no risk flags / KYC / email).
+router.get('/issuers/directory', requireAuth, issuer.listIssuerDirectory);
+
+// ── "Request your institution" — demand signal when a school isn't listed ──
+router.post('/issuers/directory/request', requireAuth, institution.requestInstitution);
+router.get('/admin/institution-requests', requireAuth, requireAdmin, institution.listInstitutionRequests);
+router.post('/admin/institution-requests/:id/resolve', requireAuth, requireAdmin, institution.resolveInstitutionRequest);
+
 // ── Economy layer: Talent Search & Discovery ─────────────────
 router.get('/talent/search', requireAuth, student.searchTalent);
+
+// ── Economy layer: Bounties (two-sided lifecycle) ────────────
+// NOTE: static paths (/mine, /applications/mine, /global, /leaderboard,
+// /direct, /auto-release) MUST precede the /:id param routes below, or
+// Express matches the literal segment as an :id.
+router.get('/bounties', requireAuth, bounty.listOpenBounties);
+router.post('/bounties', requireAuth, requireRole('employer'), bounty.createBounty);
+router.get('/bounties/mine', requireAuth, requireRole('employer'), bounty.listMyBounties);
+router.get('/bounties/applications/mine', requireAuth, requireRole('student'), bounty.listMyApplications);
+
+// ── Direct "live task" assignment (employer → specific student) ──
+router.post('/bounties/direct', requireAuth, requireRole('employer'), bounty.createDirectTask);
+
+// ── Global (open competition) bounties + leaderboard ──
+router.get('/bounties/global', requireAuth, bounty.listGlobalBounties);
+router.post('/bounties/global', requireAuth, requireRole('employer'), bounty.createGlobalBounty);
+router.get('/bounties/leaderboard', requireAuth, bounty.leaderboard);
+router.post('/bounties/auto-release', requireAuth, requireAdmin, bounty.autoReleaseStale);
+
+// ── Param routes (:id) — must come after all static paths above ──
+router.post('/bounties/:id/apply', requireAuth, requireRole('student'), bounty.applyToBounty);
+router.post('/bounties/:id/respond', requireAuth, requireRole('student'), bounty.respondToDirectTask);
+router.post('/bounties/:id/submit', requireAuth, requireRole('student'), bounty.submitToGlobalBounty);
+router.post('/bounties/:id/cancel', requireAuth, requireRole('employer'), bounty.cancelBounty);
+router.get('/bounties/:id/submissions', requireAuth, bounty.listGlobalSubmissions);
+router.post('/bounties/:id/select-winners', requireAuth, requireRole('employer'), bounty.selectWinners);
+router.post('/bounties/:id/applications/:appId/deliver', requireAuth, requireRole('student'), bounty.submitDelivery);
+router.get('/bounties/:id/applications', requireAuth, requireRole('employer'), bounty.listBountyApplicants);
+router.post('/bounties/:id/applications/:appId/accept', requireAuth, requireRole('employer'), bounty.acceptApplicant);
+router.post('/bounties/:id/applications/:appId/confirm', requireAuth, requireRole('employer'), bounty.confirmDelivery);
+router.post('/bounties/:id/applications/:appId/rate', requireAuth, bounty.rateCounterparty);
 
 // ── System 4: AI gateway proxies ─────────────────────────────
 router.post('/ai/generate-verified-cv', requireAuth, ai.generateVerifiedCV);

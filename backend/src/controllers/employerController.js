@@ -30,9 +30,19 @@ async function talentFeed(req, res) {
       });
     }
 
-    const profiles = await StudentProfile.find({ userId: { $in: ids } }).select('userId sandboxSkills');
+    const profiles = await StudentProfile.find({ userId: { $in: ids } }).select('userId sandboxSkills attestedSkills');
     const sandboxByStudent = new Map(
       profiles.map((p) => [String(p.userId), (p.sandboxSkills || []).map((s) => s.skillName)])
+    );
+    // Attested = vouched sandbox skills, EXCLUDING any under dispute or upheld
+    // as false (those carry no trust and shouldn't render as attested).
+    const attestedByStudent = new Map(
+      profiles.map((p) => [
+        String(p.userId),
+        (p.attestedSkills || [])
+          .filter((a) => !['under_review', 'resolved_upheld'].includes(a.dispute?.status))
+          .map((a) => a.skillName),
+      ])
     );
 
     const feed = students
@@ -41,6 +51,7 @@ async function talentFeed(req, res) {
         name: s.name,
         credchainId: s.credchainId,
         verified: credsByStudent.get(String(s._id)) || [],
+        attested: attestedByStudent.get(String(s._id)) || [],
         sandbox: sandboxByStudent.get(String(s._id)) || [],
       }))
       // Surface students with verifiable evidence first (no bias proxies — just

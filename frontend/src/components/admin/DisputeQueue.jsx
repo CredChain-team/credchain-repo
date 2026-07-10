@@ -37,14 +37,26 @@ export default function DisputeQueue({ disputes, onResolve }) {
 
   return (
     <motion.div variants={stagger(0.05)} initial="initial" animate="animate" className="space-y-3">
-      {disputes.map((d) => (
+      {disputes.map((d) => {
+        // The queue is uniform but adjudicates two kinds: credential
+        // revocations and reputation-backed vouches. Label + button copy adapt.
+        const isVouch = d.type === 'vouch';
+        return (
         <motion.div key={String(d.id)} variants={staggerItem}>
           <Card className="border-l-4 border-l-warning-500">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-bold tracking-tight text-content-primary">{d.title}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-bold tracking-tight text-content-primary">{d.title}</p>
+                  <Badge tone={isVouch ? 'violet' : 'brand'} variant="soft" size="sm">
+                    {isVouch ? 'Vouch' : 'Credential'}
+                  </Badge>
+                </div>
                 <p className="mt-0.5 text-xs text-content-secondary">
-                  Issued by <span className="font-medium text-content-primary">{d.issuer}</span> · disputed by <span className="font-medium text-content-primary">{d.student}</span>
+                  {isVouch ? 'Vouched by' : 'Issued by'} <span className="font-medium text-content-primary">{d.issuer}</span> · disputed by <span className="font-medium text-content-primary">{d.student}</span>
+                  {isVouch && d.stakedPoints != null && (
+                    <> · <span className="font-medium text-content-primary">{d.stakedPoints} pts</span> staked</>
+                  )}
                 </p>
               </div>
               <Badge tone="warning" variant="soft" size="sm">{timeAgo(d.filedAt)}</Badge>
@@ -64,7 +76,7 @@ export default function DisputeQueue({ disputes, onResolve }) {
                 leftIcon={<RotateCcw className="h-4 w-4" />}
                 onClick={() => resolve(d.id, 'reinstate')}
               >
-                Reinstate credential
+                {isVouch ? 'Reinstate vouch (return stake)' : 'Reinstate credential'}
               </Button>
               <Button
                 size="sm"
@@ -73,12 +85,13 @@ export default function DisputeQueue({ disputes, onResolve }) {
                 leftIcon={<ShieldX className="h-4 w-4" />}
                 onClick={() => resolve(d.id, 'uphold')}
               >
-                Uphold revocation
+                {isVouch ? 'Uphold (forfeit stake)' : 'Uphold revocation'}
               </Button>
             </div>
           </Card>
         </motion.div>
-      ))}
+        );
+      })}
     </motion.div>
   );
 }

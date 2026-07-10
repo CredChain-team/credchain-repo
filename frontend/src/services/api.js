@@ -294,6 +294,74 @@ export async function addSandboxSkill(payload) {
   }
 }
 
+// ── /api/v1 — Vouch economy (self-upload trust bridge) ───────
+
+// POST /api/v1/student/:studentId/sandbox/:skillIndex/vouch  (any authed user ≥60 rep)
+export async function vouchSandboxSkill(studentId, skillIndex) {
+  try {
+    const { data } = await api.post(`/api/v1/student/${studentId}/sandbox/${skillIndex}/vouch`, {});
+    return data;
+  } catch (error) {
+    logError('vouchSandboxSkill', error);
+    throw error;
+  }
+}
+
+// POST /api/v1/attested/:studentId/:attestedIndex/dispute  (owning student)
+export async function disputeAttestation(studentId, attestedIndex, reason) {
+  try {
+    const { data } = await api.post(`/api/v1/attested/${studentId}/${attestedIndex}/dispute`, { reason });
+    return data;
+  } catch (error) {
+    logError('disputeAttestation', error);
+    throw error;
+  }
+}
+
+// GET /api/v1/issuers/directory  (any authed user) → verified issuers only
+export async function getIssuerDirectory() {
+  try {
+    const { data } = await api.get('/api/v1/issuers/directory');
+    return data;
+  } catch (error) {
+    logError('getIssuerDirectory', error);
+    throw error;
+  }
+}
+
+// POST /api/v1/issuers/directory/request  → { institutionName, website?, note? }
+export async function requestInstitution(payload) {
+  try {
+    const { data } = await api.post('/api/v1/issuers/directory/request', payload);
+    return data;
+  } catch (error) {
+    logError('requestInstitution', error);
+    throw error;
+  }
+}
+
+// GET /api/v1/admin/institution-requests  (admin) → ranked demand list
+export async function getInstitutionRequests() {
+  try {
+    const { data } = await api.get('/api/v1/admin/institution-requests');
+    return data;
+  } catch (error) {
+    logError('getInstitutionRequests', error);
+    throw error;
+  }
+}
+
+// POST /api/v1/admin/institution-requests/:id/resolve  (admin) → { status }
+export async function resolveInstitutionRequest(id, status) {
+  try {
+    const { data } = await api.post(`/api/v1/admin/institution-requests/${id}/resolve`, { status });
+    return data;
+  } catch (error) {
+    logError('resolveInstitutionRequest', error);
+    throw error;
+  }
+}
+
 // ── /api/v1 — Issuance + revocation (System 7) ───────────────
 
 // POST /api/v1/issuer/credentials  → { title, recipientEmail?, studentId? }
@@ -465,6 +533,267 @@ export async function registryCrossMatch(userId, matched, notes) {
   }
 }
 
+// ── /api/v1 — Economy layer: Bounties ────────────────────────
+
+// GET /api/v1/bounties  → open bounties (+ myApplicationStatus for students)
+export async function listOpenBounties() {
+  try {
+    const { data } = await api.get('/api/v1/bounties');
+    return data;
+  } catch (error) {
+    logError('listOpenBounties', error);
+    throw error;
+  }
+}
+
+// POST /api/v1/bounties  (employer)
+export async function createBounty(payload) {
+  try {
+    const { data } = await api.post('/api/v1/bounties', payload);
+    return data;
+  } catch (error) {
+    logError('createBounty', error);
+    throw error;
+  }
+}
+
+// GET /api/v1/bounties/mine  (employer)
+export async function getMyBounties() {
+  try {
+    const { data } = await api.get('/api/v1/bounties/mine');
+    return data;
+  } catch (error) {
+    logError('getMyBounties', error);
+    throw error;
+  }
+}
+
+// GET /api/v1/bounties/applications/mine  (student)
+export async function getMyApplications() {
+  try {
+    const { data } = await api.get('/api/v1/bounties/applications/mine');
+    return data;
+  } catch (error) {
+    logError('getMyApplications', error);
+    throw error;
+  }
+}
+
+// POST /api/v1/bounties/:id/apply  (student)
+export async function applyToBounty(id, payload = {}) {
+  try {
+    const { data } = await api.post(`/api/v1/bounties/${id}/apply`, payload);
+    return data;
+  } catch (error) {
+    logError('applyToBounty', error);
+    throw error;
+  }
+}
+
+// POST /api/v1/bounties/:id/applications/:appId/deliver  (student)
+export async function submitDelivery(id, appId, payload) {
+  try {
+    const { data } = await api.post(`/api/v1/bounties/${id}/applications/${appId}/deliver`, payload);
+    return data;
+  } catch (error) {
+    logError('submitDelivery', error);
+    throw error;
+  }
+}
+
+// GET /api/v1/bounties/:id/applications  (employer)
+export async function getBountyApplicants(id) {
+  try {
+    const { data } = await api.get(`/api/v1/bounties/${id}/applications`);
+    return data;
+  } catch (error) {
+    logError('getBountyApplicants', error);
+    throw error;
+  }
+}
+
+// POST /api/v1/bounties/:id/applications/:appId/accept  (employer)
+export async function acceptApplicant(id, appId) {
+  try {
+    const { data } = await api.post(`/api/v1/bounties/${id}/applications/${appId}/accept`, {});
+    return data;
+  } catch (error) {
+    logError('acceptApplicant', error);
+    throw error;
+  }
+}
+
+// POST /api/v1/bounties/:id/applications/:appId/confirm  (employer)
+export async function confirmDelivery(id, appId) {
+  try {
+    const { data } = await api.post(`/api/v1/bounties/${id}/applications/${appId}/confirm`, {});
+    return data;
+  } catch (error) {
+    logError('confirmDelivery', error);
+    throw error;
+  }
+}
+
+// ── Direct "live task" assignment ────────────────────────────
+
+// POST /api/v1/bounties/direct  (employer) → { studentId, title, description, … }
+export async function createDirectTask(payload) {
+  try {
+    const { data } = await api.post('/api/v1/bounties/direct', payload);
+    return data;
+  } catch (error) {
+    logError('createDirectTask', error);
+    throw error;
+  }
+}
+
+// POST /api/v1/bounties/:id/respond  (student) → { decision: 'accept'|'decline' }
+export async function respondToDirectTask(id, decision) {
+  try {
+    const { data } = await api.post(`/api/v1/bounties/${id}/respond`, { decision });
+    return data;
+  } catch (error) {
+    logError('respondToDirectTask', error);
+    throw error;
+  }
+}
+
+// POST /api/v1/bounties/:id/applications/:appId/rate  → { stars, comment }
+export async function rateCounterparty(id, appId, payload) {
+  try {
+    const { data } = await api.post(`/api/v1/bounties/${id}/applications/${appId}/rate`, payload);
+    return data;
+  } catch (error) {
+    logError('rateCounterparty', error);
+    throw error;
+  }
+}
+
+// POST /api/v1/bounties/:id/cancel  (employer)
+export async function cancelBounty(id) {
+  try {
+    const { data } = await api.post(`/api/v1/bounties/${id}/cancel`, {});
+    return data;
+  } catch (error) {
+    logError('cancelBounty', error);
+    throw error;
+  }
+}
+
+// ── Global (open competition) bounties + leaderboard ─────────
+
+// GET /api/v1/bounties/global  → global bounties (+ mySubmissionStatus for students)
+export async function listGlobalBounties() {
+  try {
+    const { data } = await api.get('/api/v1/bounties/global');
+    return data;
+  } catch (error) {
+    logError('listGlobalBounties', error);
+    throw error;
+  }
+}
+
+// POST /api/v1/bounties/global  (employer) → { title, description, prizes: [...] }
+export async function createGlobalBounty(payload) {
+  try {
+    const { data } = await api.post('/api/v1/bounties/global', payload);
+    return data;
+  } catch (error) {
+    logError('createGlobalBounty', error);
+    throw error;
+  }
+}
+
+// POST /api/v1/bounties/:id/submit  (student) → { text, links }
+export async function submitToGlobalBounty(id, payload) {
+  try {
+    const { data } = await api.post(`/api/v1/bounties/${id}/submit`, payload);
+    return data;
+  } catch (error) {
+    logError('submitToGlobalBounty', error);
+    throw error;
+  }
+}
+
+// GET /api/v1/bounties/:id/submissions  (sponsor, or public once completed)
+export async function getGlobalSubmissions(id) {
+  try {
+    const { data } = await api.get(`/api/v1/bounties/${id}/submissions`);
+    return data;
+  } catch (error) {
+    logError('getGlobalSubmissions', error);
+    throw error;
+  }
+}
+
+// POST /api/v1/bounties/:id/select-winners  (employer) → { winners: [{ appId, rank }] }
+export async function selectWinners(id, winners) {
+  try {
+    const { data } = await api.post(`/api/v1/bounties/${id}/select-winners`, { winners });
+    return data;
+  } catch (error) {
+    logError('selectWinners', error);
+    throw error;
+  }
+}
+
+// GET /api/v1/bounties/leaderboard  → top earners by real delivered work
+export async function getLeaderboard() {
+  try {
+    const { data } = await api.get('/api/v1/bounties/leaderboard');
+    return data;
+  } catch (error) {
+    logError('getLeaderboard', error);
+    throw error;
+  }
+}
+
+// ── Fraud reporting (Anti-COLLUSION) ─────────────────────────
+
+// POST /api/v1/credential/:id/report-fraud  (any authed user) → { reason }
+export async function reportCredentialFraud(id, reason) {
+  try {
+    const { data } = await api.post(`/api/v1/credential/${id}/report-fraud`, { reason });
+    return data;
+  } catch (error) {
+    logError('reportCredentialFraud', error);
+    throw error;
+  }
+}
+
+// GET /api/v1/admin/fraud-reports  (admin)
+export async function listFraudReports() {
+  try {
+    const { data } = await api.get('/api/v1/admin/fraud-reports');
+    return data;
+  } catch (error) {
+    logError('listFraudReports', error);
+    throw error;
+  }
+}
+
+// POST /api/v1/admin/fraud-reports/:id/resolve  (admin) → { decision, notes }
+export async function resolveFraudReport(id, decision, notes) {
+  try {
+    const { data } = await api.post(`/api/v1/admin/fraud-reports/${id}/resolve`, { decision, notes });
+    return data;
+  } catch (error) {
+    logError('resolveFraudReport', error);
+    throw error;
+  }
+}
+
+// GET /api/v1/talent/search  (employer)  → params become the query string.
+export async function searchTalent(params = {}) {
+  try {
+    const { data } = await api.get('/api/v1/talent/search', { params });
+    return data;
+  } catch (error) {
+    logError('searchTalent', error);
+    throw error;
+  }
+}
+
 // Absolute URL for the public live-status SVG badge (System 5).
 export function badgeUrl(credentialId) {
   return `${API_BASE_URL}/api/v1/badge/${credentialId}`;
@@ -492,4 +821,53 @@ export default {
   verifyIssuerDomain,
   submitIssuerKyc,
   getStudentPortfolio,
+  addSandboxSkill,
+  vouchSandboxSkill,
+  disputeAttestation,
+  getIssuerDirectory,
+  requestInstitution,
+  getInstitutionRequests,
+  resolveInstitutionRequest,
+  issueVerifiedCredential,
+  revokeCredential,
+  bulkUploadCredentials,
+  generateVerifiedCv,
+  syncTelemetry,
+  initializeChat,
+  sendChatMessageV1,
+  getChatRooms,
+  getTalentFeed,
+  disputeCredential,
+  listDisputes,
+  resolveDispute,
+  getAdminIssuers,
+  registryCrossMatch,
+  // Economy: bounties
+  listOpenBounties,
+  createBounty,
+  getMyBounties,
+  getMyApplications,
+  applyToBounty,
+  submitDelivery,
+  getBountyApplicants,
+  acceptApplicant,
+  confirmDelivery,
+  searchTalent,
+  badgeUrl,
+  // Direct tasks
+  createDirectTask,
+  respondToDirectTask,
+  rateCounterparty,
+  cancelBounty,
+  // Global competition + leaderboard
+  listGlobalBounties,
+  createGlobalBounty,
+  submitToGlobalBounty,
+  getGlobalSubmissions,
+  selectWinners,
+  getLeaderboard,
+  // Anti-collusion fraud reporting
+  reportCredentialFraud,
+  listFraudReports,
+  resolveFraudReport,
 };

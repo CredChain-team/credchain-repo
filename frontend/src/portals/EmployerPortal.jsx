@@ -36,7 +36,7 @@ const SUBTITLES = {
 
 export default function EmployerPortal() {
   const { user } = useAuth();
-  const [hideUnverified, setHideUnverified] = useState(false);
+  const [skillView, setSkillView] = useState('all'); // 'verified' | 'attested' | 'all'
   const [students, setStudents] = useState([]);
   const [credits, setCredits] = useState(null);
   const [rooms, setRooms] = useState([]);
@@ -168,19 +168,8 @@ export default function EmployerPortal() {
       <div key={tab}>
         {tab === 'talent' && (
           <TalentSearch
-            onContact={(student) => {
-              window.alert(
-                `Message sent to ${student.name}.\n\n` +
-                `CredScore: ${student.credScore} · ${student.deliveries} confirmed deliveries.\n` +
-                `They'll receive a notification and can reply from their vault.`
-              );
-            }}
-            onInviteToBounty={(student) => {
-              window.alert(
-                `${student.name} has been invited to apply for your open bounties.\n\n` +
-                `Their verified credentials will be reviewed against your requirements.`
-              );
-            }}
+            onContact={(student) => openChat(student)}
+            onInviteToBounty={() => setTab('bounties')}
           />
         )}
 
@@ -188,8 +177,8 @@ export default function EmployerPortal() {
           <TalentFeed
             students={students}
             loading={loading}
-            hideUnverified={hideUnverified}
-            onToggleHide={() => setHideUnverified((h) => !h)}
+            skillView={skillView}
+            onChangeView={setSkillView}
             onMessage={openChat}
             employerName={user?.name}
           />

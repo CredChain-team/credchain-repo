@@ -15,4 +15,4 @@ export { default as OnChainProof } from './OnChainProof';
 export { SuccessCheck, ConfettiBurst } from './SuccessCheck';
 export { default as ThemeToggle } from './ThemeToggle';
 export { default as ErrorBoundary } from './ErrorBoundary';
-export { default as TrustTier, TRUST_TIERS, trustTier } from './TrustTier';
+export { default as TrustTier, TRUST_TIERS, trustTier, AttestedBadge, VerifiedBadge, SelfDeclaredBadge } from './TrustTier';
