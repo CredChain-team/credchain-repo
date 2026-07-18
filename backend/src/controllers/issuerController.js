@@ -17,13 +17,20 @@ const IssuerProfile = require('../models/IssuerProfile');
 const User = require('../models/User');
 const { extractDomain, isConsumerEmail } = require('../utils/email');
 const { lookupDomainAge } = require('../services/whois');
+const verificationRouter = require('../services/verificationRouter');
 
 const MIN_DOMAIN_AGE_MONTHS = 6;
+
+// How long a full L4 verification stays valid before re-attestation is
+// required. No permanent badges — a domain can lapse or an org can close.
+const VERIFICATION_TTL_DAYS = Number(process.env.ISSUER_VERIFICATION_TTL_DAYS || 365);
 
 // ── L1: Domain WHOIS & match ─────────────────────────────────
 async function registerIssuerStepOne(req, res) {
   try {
-    const { institutionType } = req.body || {};
+    const { institutionType, rcNumber, companyName } = req.body || {};
+    // ISO-3166 country drives the VerificationRouter (NG → CAC; else → RDAP).
+    const country = String(req.body?.country || 'NG').toUpperCase().trim();
     // The corporate email is the caller's own account email (from the JWT),
     // but allow an explicit override in the body for orgs whose login differs.
     const email = (req.body?.email || req.user?.email || '').toLowerCase();
@@ -60,12 +67,33 @@ async function registerIssuerStepOne(req, res) {
     }
 
     // Async WHOIS age check (degrades gracefully → manual-review flag).
+    // NOTE: domain age is now only a SUPPLEMENTARY risk signal, not the entity
+    // gate — an aged domain is buyable, and WHOIS:43 is blocked on many hosts.
     const riskFlags = [];
     const whois = await lookupDomainAge(domain);
     if (!whois.ok) {
       riskFlags.push('whois_unavailable');
     } else if (whois.ageMonths < MIN_DOMAIN_AGE_MONTHS) {
       riskFlags.push('domain_age_lt_6mo');
+    }
+
+    // ── L1 entity legitimacy via VerificationRouter (CAC for NG) ──
+    // The real entity check: a government registry lookup, not a domain guess.
+    // Fails closed → sets needs_manual_registry_review when no provider wired.
+    let registryEntity = { provider: 'cac_pending', verified: false, rcNumber: rcNumber || null, checkedAt: new Date() };
+    try {
+      const entity = await verificationRouter.verifyEntity({ country, rcNumber, companyName, domain });
+      registryEntity = {
+        rcNumber: rcNumber || null,
+        provider: entity.method,
+        verified: Boolean(entity.verified),
+        checkedAt: new Date(),
+      };
+      for (const f of entity.flags || []) riskFlags.push(f);
+    } catch (entityErr) {
+      // A wired-but-erroring provider must not hard-fail registration — flag it.
+      console.error('[issuer:stepOne] entity check failed:', entityErr.message);
+      riskFlags.push('entity_check_error');
     }
 
     // Mint the DNS challenge token the issuer must publish (L2).
@@ -76,7 +104,9 @@ async function registerIssuerStepOne(req, res) {
       {
         $set: {
           institutionType: institutionType || 'other',
+          country,
           lockedDomain: domain,
+          registryEntity,
           verificationStatus: 'applied',
           dnsChallengeToken,
           domainCreatedAt: whois.ok ? whois.createdAt : undefined,
@@ -160,8 +190,13 @@ async function verifyDomainOwnership(req, res) {
   }
 }
 
-// ── L3: Biometric KYC ────────────────────────────────────────
-// Issuer kicks off a KYC session (returns a reference the provider would use).
+// ── L3: Biometric KYC (SYNCHRONOUS) ──────────────────────────
+// The issuer's signing officer submits NIN + a selfie + explicit consent. The
+// VerificationRouter calls the KYC provider (Smile ID for NG) SYNCHRONOUSLY
+// and the result returns in THIS response. This removes the old async webhook
+// + static-shared-secret design (kycWebhook, kept below only as a legacy
+// fallback) — there is no callback to forge or replay. We store pass/fail +
+// a provider reference ONLY; never the raw biometric (NDPA 2023 / GDPR).
 async function submitKyc(req, res) {
   try {
     const profile = await IssuerProfile.findOne({ userId: req.user.id });
@@ -172,14 +207,73 @@ async function submitKyc(req, res) {
       return res.status(409).json({ success: false, message: 'Verify your domain (Tier 2) before KYC.' });
     }
 
-    const reference = `kyc_${crypto.randomBytes(8).toString('hex')}`;
-    profile.kyc = { status: 'pending', reference, checkedAt: null };
+    const { nin, selfieImage, documentImage, consent } = req.body || {};
+    // Explicit, recorded consent is a HARD precondition for processing
+    // biometric/identity data (NDPA 2023 sensitive-data rule). In DEMO_MODE we
+    // default it to true so the existing demo/frontend keeps working untouched;
+    // in production (DEMO_MODE=false) it must be explicitly provided.
+    const demoMode = process.env.DEMO_MODE !== 'false';
+    const consentGiven = consent === true || (demoMode && consent === undefined);
+    if (!consentGiven) {
+      return res.status(400).json({
+        success: false,
+        message: 'Explicit consent to process identity data is required to proceed with KYC.',
+      });
+    }
+
+    // Synchronous identity + liveness via the router (country-aware).
+    let result;
+    try {
+      result = await verificationRouter.verifyIdentity({
+        country: profile.country || 'NG',
+        nin,
+        selfieImage,
+        documentImage,
+        consentGiven: true,
+      });
+    } catch (kycErr) {
+      console.error('[issuer:submitKyc] provider error:', kycErr.message);
+      return res.status(502).json({ success: false, message: 'The identity provider could not be reached. Please try again.' });
+    }
+
+    // Record consent + provider reference (NOT the biometric itself).
+    profile.dataConsent = {
+      given: true,
+      givenAt: new Date(),
+      purpose: 'issuer_identity_verification',
+      policyVersion: process.env.PRIVACY_POLICY_VERSION || 'v1',
+    };
+    profile.kyc = {
+      status: result.passed ? 'passed' : (result.provisional ? 'pending' : 'failed'),
+      reference: result.reference || `kyc_${crypto.randomBytes(8).toString('hex')}`,
+      checkedAt: new Date(),
+    };
+
+    // Advance the funnel on a real pass. The router returns a flagged
+    // `provisional` result ONLY in demo mode (no provider wired) — advancing on
+    // it lets the demo complete while the risk flag records it was NOT a real
+    // identity assurance. Using result.provisional (not a module-load env
+    // check) means a mis-set KYC_PROVIDER fails closed via the 502 above
+    // instead of silently mis-advancing.
+    const advance = result.passed || result.provisional === true;
+    if (advance && profile.verificationStatus === 'domain_verified') {
+      profile.verificationStatus = 'identity_checked';
+    }
+    for (const f of result.flags || []) {
+      profile.riskFlags = Array.from(new Set([...(profile.riskFlags || []), f]));
+    }
     await profile.save();
 
-    return res.status(202).json({
+    return res.status(200).json({
       success: true,
-      message: 'KYC session created. The provider will call the webhook on completion.',
-      kycReference: reference,
+      message: result.passed
+        ? 'Identity verified (Tier 3 complete). Next: registry cross-match.'
+        : (result.provisional
+            ? 'KYC recorded in demo mode (not a real identity assurance). Funnel advanced for testing.'
+            : 'Identity verification did not pass.'),
+      verificationStatus: profile.verificationStatus,
+      kycProvider: result.provider,
+      kycReference: profile.kyc.reference,
     });
   } catch (err) {
     console.error('[issuer:submitKyc]', err.message);
@@ -187,8 +281,9 @@ async function submitKyc(req, res) {
   }
 }
 
-// Webhook the KYC provider calls. Protected by a shared secret header rather
-// than a user JWT (the caller is a machine, not the issuer).
+// LEGACY FALLBACK: the old async webhook the KYC provider calls. Retained so a
+// provider configured for async callbacks still works, but the primary path is
+// now the synchronous submitKyc above. Protected by a shared secret header.
 async function kycWebhook(req, res) {
   try {
     const secret = req.headers['x-kyc-secret'];
@@ -244,7 +339,17 @@ async function registryCrossMatch(req, res) {
       });
     }
 
-    const isMatch = matched !== false; // default to approve unless explicitly rejected
+    // FAIL CLOSED: L4 is the gate that flips isVerifiedIssuer → true, the
+    // single boolean every mint/revoke route trusts. Approval must be EXPLICIT.
+    // A missing/omitted `matched` (client bug, truncated request, bad tooling)
+    // must NOT silently verify an issuer — require matched === true.
+    if (typeof matched !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: "Explicit 'matched' boolean is required (true = verify, false = reject).",
+      });
+    }
+    const isMatch = matched === true;
     profile.registry = {
       matched: isMatch,
       reviewedBy: req.user.email || req.user.id,
@@ -255,6 +360,8 @@ async function registryCrossMatch(req, res) {
     if (isMatch) {
       profile.verificationStatus = 'active';
       profile.isVerifiedIssuer = true;
+      // No permanent badge — set the re-verification expiry.
+      profile.verifiedUntil = new Date(Date.now() + VERIFICATION_TTL_DAYS * 24 * 60 * 60 * 1000);
     } else {
       profile.riskFlags = Array.from(new Set([...(profile.riskFlags || []), 'registry_no_match']));
     }
@@ -267,6 +374,7 @@ async function registryCrossMatch(req, res) {
         : 'Registry cross-match failed; issuer remains unverified.',
       verificationStatus: profile.verificationStatus,
       isVerifiedIssuer: profile.isVerifiedIssuer,
+      verifiedUntil: profile.verifiedUntil || null,
     });
   } catch (err) {
     console.error('[issuer:registryCrossMatch]', err.message);

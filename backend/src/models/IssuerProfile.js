@@ -32,6 +32,28 @@ const issuerProfileSchema = new mongoose.Schema(
       default: 'other',
     },
 
+    // ISO-3166 country the issuer operates in. Drives the VerificationRouter:
+    // each tier resolves its provider PER COUNTRY (NG → CAC/Smile ID/WAEC;
+    // else → RDAP/Veriff/…). Nigeria-first, but never Nigeria-hardcoded.
+    country: {
+      type: String,
+      uppercase: true,
+      trim: true,
+      default: 'NG',
+      index: true,
+    },
+
+    // ── L1 entity legitimacy (CAC for NG) ──────────────────────────────
+    // The registry identifier + its verified status, from verifyEntity().
+    // rcNumber (Nigeria CAC) also feeds the common-ownership check: two
+    // issuers sharing an RC number / director are NOT independent attestors.
+    registryEntity: {
+      rcNumber:   { type: String, trim: true, index: true, sparse: true },
+      provider:   { type: String },   // 'dojah' | 'verifyme' | 'qoreid' | 'rdap' | 'cac_pending'
+      verified:   { type: Boolean, default: false },
+      checkedAt:  { type: Date },
+    },
+
     // The email domain this issuer is locked to (e.g. "mit.edu"). Indexed +
     // unique (sparse) so two issuers can't both claim the same domain.
     lockedDomain: { type: String, lowercase: true, trim: true, index: true, unique: true, sparse: true },
@@ -72,6 +94,25 @@ const issuerProfileSchema = new mongoose.Schema(
     },
 
     isVerifiedIssuer: { type: Boolean, default: false, index: true },
+
+    // ── Re-verification (no permanent badges) ──────────────────────────
+    // Passing L4 does NOT grant a permanent badge. Verification EXPIRES; a
+    // domain can lapse, an institution can close, staff can turn over. When
+    // `verifiedUntil` passes, a sweep re-checks domain + entity status and, if
+    // stale, flips isVerifiedIssuer back to false pending re-attestation.
+    verifiedUntil: { type: Date, index: true },
+
+    // ── NDPA 2023 / GDPR consent record ────────────────────────────────
+    // Biometric KYC (L3) processes sensitive personal data; the law requires
+    // explicit, recorded consent. Stored as a record of consent + a deletion
+    // path — never the raw biometric itself (that stays with the KYC provider).
+    dataConsent: {
+      given:      { type: Boolean, default: false },
+      givenAt:    { type: Date },
+      purpose:    { type: String },   // e.g. 'issuer_identity_verification'
+      policyVersion: { type: String },
+      erasedAt:   { type: Date },     // set when a data-subject deletion is honored
+    },
 
     // ── Issuer reputation / skin-in-the-game (Anti-COLLUSION core) ─────
     // Passing the funnel gets you in the door; it does NOT make your

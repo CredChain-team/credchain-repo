@@ -65,10 +65,17 @@ const bountySchema = new mongoose.Schema(
     skillCategory: { type: String, default: 'Other' },
     skillTags:     [{ type: String }],
 
-    // ── Reward (display) + simulated escrow amount ────────────────────
+    // ── Reward (display) + escrow amount ──────────────────────────────
     reward:    { type: String },              // display string, e.g. '₦250,000'
     rewardUSD: { type: Number, default: 0 },
-    rewardSOL: { type: Number, default: 0 },  // simulated escrow amount → totalEarnedSOL
+    rewardSOL: { type: Number, default: 0 },  // legacy/simulated on-chain amount
+    // Generic money: the escrow works in WHATEVER currency the bounty is priced
+    // in (ISO-4217). Nigeria launch defaults to NGN, but a USD/KES/GBP bounty
+    // is fully supported. Funds are held in trust by a licensed payment partner
+    // (services/payments.js), never custodied by CredChain and never converted
+    // to crypto — Solana is used only to anchor the credential proof.
+    rewardAmount:   { type: Number, default: 0 },
+    rewardCurrency: { type: String, uppercase: true, trim: true, default: 'NGN' },  // ISO-4217
 
     // ── Prize pool (GLOBAL bounties) ──────────────────────────────────
     // Multiple winners split the escrowed pool by rank. For an 'assigned'
@@ -78,6 +85,7 @@ const bountySchema = new mongoose.Schema(
         _id:       false,
         rank:      { type: Number },          // 1 = first place
         label:     { type: String },          // e.g. '1st place'
+        amount:    { type: Number, default: 0 },  // generic escrow amount (bounty currency)
         amountSOL: { type: Number, default: 0 },
         amountUSD: { type: Number, default: 0 },
         reward:    { type: String },          // display string
@@ -121,13 +129,26 @@ const bountySchema = new mongoose.Schema(
       default: 'open',
     },
 
-    // ── Simulated escrow ──────────────────────────────────────────────
+    // ── Escrow (licensed fiat partner — held in trust, NOT by CredChain) ──
+    // CredChain never custodies funds. A licensed provider opens a per-bounty
+    // virtual account in trust, the employer funds it in the bounty currency,
+    // and CredChain only sends release/refund INSTRUCTIONS. `provider`/
+    // `reference` track the partner side; `mock:true` marks the simulated path.
     escrow: {
-      state:       { type: String, enum: ['none', 'held', 'released', 'refunded'], default: 'none' },
-      amountSOL:   { type: Number, default: 0 },
+      state:        { type: String, enum: ['none', 'held', 'released', 'refunded'], default: 'none' },
+      amount:       { type: Number, default: 0 },   // generic escrow amount
+      currency:     { type: String, uppercase: true, trim: true, default: 'NGN' },  // ISO-4217
+      amountSOL:    { type: Number, default: 0 },   // legacy/simulated field
+      provider:     { type: String },               // 'flutterwave' | 'korapay' | … | 'simulated'
+      reference:    { type: String },               // partner escrow/txn reference
+      virtualAccount: {                             // where the employer pays (live mode)
+        bankName:      { type: String },
+        accountNumber: { type: String },
+        accountName:   { type: String },
+      },
       heldAt:      { type: Date },
       releasedAt:  { type: Date },
-      txSignature: { type: String },            // mock/real anchor of the escrow event
+      txSignature: { type: String },            // legacy: mock/real anchor of the escrow event
       mock:        { type: Boolean, default: false },
     },
 

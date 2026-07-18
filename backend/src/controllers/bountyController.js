@@ -24,10 +24,73 @@ const { ensureStudentProfile } = require('./studentController');
 const { ensureEmployerProfile } = require('./chatController');
 const { recalculateCredScore, assignTier } = require('../utils/credScore');
 const { computeBountyWeight } = require('../utils/bountyWeight');
+const { computeIssuanceWeight } = require('../utils/issuanceWeight');
 const { computeCredentialHash } = require('../utils/hash');
 const { anchorHash } = require('../config/solana');
+const payments = require('../services/payments');
 
 const TIER_ORDER = ['learner', 'practitioner', 'proven_practitioner', 'expert', 'master'];
+
+// Minimum escrow required before a bounty confirmation can MINT a credential.
+// A near-zero-cost bounty + an accomplice was a free path to a real credential;
+// requiring skin in the game closes it. Floors are PER-CURRENCY (rough parity)
+// so the platform works in any market, not just Naira. Anything not listed
+// falls back to "any positive amount". Floors are 0 in DEMO_MODE (the scripted
+// demo posts 0-value bounties). Matches config/solana.js: demo ON unless 'false'.
+const MIN_ESCROW_FLOORS = {
+  NGN: Number(process.env.MIN_BOUNTY_ESCROW_NGN || 5000),
+  USD: Number(process.env.MIN_BOUNTY_ESCROW_USD || 3),
+  GBP: Number(process.env.MIN_BOUNTY_ESCROW_GBP || 3),
+  EUR: Number(process.env.MIN_BOUNTY_ESCROW_EUR || 3),
+  KES: Number(process.env.MIN_BOUNTY_ESCROW_KES || 400),
+  GHS: Number(process.env.MIN_BOUNTY_ESCROW_GHS || 40),
+  ZAR: Number(process.env.MIN_BOUNTY_ESCROW_ZAR || 50),
+};
+
+// Resolve the minimum escrow for a currency. Demo mode → 0 (never blocks the
+// demo). Unknown currency → a tiny positive floor so a funded bounty passes but
+// a zero-value one is still blocked.
+function minEscrowFor(currency) {
+  if (process.env.DEMO_MODE !== 'false') return 0;
+  const cur = String(currency || 'NGN').toUpperCase();
+  return MIN_ESCROW_FLOORS[cur] != null ? MIN_ESCROW_FLOORS[cur] : 0.01;
+}
+
+// Add `amount` of `currency` to a Mongoose Map of per-currency totals
+// (deliveryStats.earnedByCurrency / sponsorStats.escrowedByCurrency). Safe on a
+// fresh doc where the Map may be undefined.
+function addToCurrencyMap(doc, mapField, currency, amount) {
+  if (!amount) return;
+  const cur = String(currency || 'NGN').toUpperCase();
+  if (!doc[mapField]) doc[mapField] = new Map();
+  const current = Number(doc[mapField].get(cur) || 0);
+  doc[mapField].set(cur, current + Number(amount));
+}
+
+// Gather the corroboration a student ALREADY had, BEFORE this delivery is
+// counted — mirrors utils/issuanceWeight.js's model. Used so a 1:1 hire-and-
+// confirm can't mint above practitioner unless the student has independent,
+// pre-existing proof (real prior deliveries or a distinct second issuer).
+async function gatherDeliveryCorroboration(studentId, thisIssuerId) {
+  try {
+    const profile = await ensureStudentProfile(studentId);
+    // Prior confirmed paid deliveries (this one not yet counted).
+    const priorDeliveries = Math.max(0, (profile.deliveryStats?.completed || 0));
+    // Distinct OTHER verified issuers who have already attested this student.
+    const creds = await Credential.find({ studentId, status: 'accepted' })
+      .select('issuerId')
+      .lean();
+    const distinctIssuers = new Set(
+      creds
+        .map((c) => String(c.issuerId))
+        .filter((idStr) => idStr && idStr !== String(thisIssuerId))
+    );
+    return { priorDeliveries, independentIssuerCount: distinctIssuers.size };
+  } catch {
+    // Fail closed: no proof of corroboration → treat as uncorroborated.
+    return { priorDeliveries: 0, independentIssuerCount: 0 };
+  }
+}
 
 // Sponsor review window (ms) — once submissions arrive, the sponsor has this
 // long to pick winners before escrow can be auto-released. 72h in prod; the
@@ -76,6 +139,8 @@ function publicBounty(b, extra = {}) {
     reward: b.reward || '',
     rewardUSD: b.rewardUSD || 0,
     rewardSOL: b.rewardSOL || 0,
+    rewardAmount: b.rewardAmount || 0,
+    rewardCurrency: b.rewardCurrency || 'NGN',
     tests: b.tests || 0,
     requiredTier: b.requiredTier || 'learner',
     openTo: b.openTo || '',
@@ -83,6 +148,8 @@ function publicBounty(b, extra = {}) {
     status: b.status,
     escrowConfirmed: ['held', 'released'].includes(b.escrow?.state),
     escrowState: b.escrow?.state || 'none',
+    escrowProvider: b.escrow?.provider || null,
+    escrowVirtualAccount: b.escrow?.virtualAccount || null,
     applicantCount: b.applicantCount || 0,
     awardedCredentialId: b.awardedCredentialId || null,
     // ── Global-bounty fields ──────────────────────────────────
@@ -161,7 +228,7 @@ async function createBounty(req, res) {
   try {
     const {
       title, description, skill, skillName, skillCategory, skillTags,
-      reward, rewardUSD, rewardSOL, tests, requiredTier, openTo, deadline, companyLogo,
+      reward, rewardUSD, rewardSOL, rewardAmount, rewardCurrency, tests, requiredTier, openTo, deadline, companyLogo,
     } = req.body || {};
 
     if (!title || !description) {
@@ -183,6 +250,8 @@ async function createBounty(req, res) {
       : String(skillTags || '').split(',').map((t) => t.trim()).filter(Boolean);
 
     const amountSOL = Number(rewardSOL) || 0;
+    const amount = Number(rewardAmount) || 0;
+    const currency = String(rewardCurrency || 'NGN').toUpperCase();
 
     const bounty = new Bounty({
       employerId: req.user.id,
@@ -197,6 +266,8 @@ async function createBounty(req, res) {
       reward: reward || '',
       rewardUSD: Number(rewardUSD) || 0,
       rewardSOL: amountSOL,
+      rewardAmount: amount,
+      rewardCurrency: currency,
       tests: Number(tests) || 0,
       requiredTier: requiredTier || 'learner',
       openTo: openTo || '',
@@ -204,20 +275,33 @@ async function createBounty(req, res) {
       status: 'open',
     });
 
-    // Simulate holding the payment in escrow up front (DEMO_MODE-safe).
+    // Open a per-bounty escrow with the licensed payment partner. Funds are
+    // held IN TRUST by the partner (never by CredChain); in demo/MVP this is a
+    // clearly-flagged simulated hold. The employer funds the returned virtual
+    // account (live mode).
     try {
-      const anchor = await anchorHash(`${title}|${req.user.id}|escrow`);
+      const held = await payments.openEscrow({
+        bountyId: bounty._id,
+        employerId: req.user.id,
+        amount,
+        currency,
+        reference: `${title}|${req.user.id}|escrow`,
+      });
       bounty.escrow = {
-        state: 'held',
+        state: held.state || 'held',
+        amount,
+        currency,
         amountSOL,
-        heldAt: new Date(),
-        txSignature: anchor.signature || undefined,
-        mock: anchor.mock,
+        provider: held.provider,
+        reference: held.reference,
+        virtualAccount: held.virtualAccount || undefined,
+        heldAt: held.heldAt || new Date(),
+        mock: Boolean(held.mock),
       };
     } catch (escrowErr) {
-      // Non-fatal: still hold in DB even if the mock anchor hiccups.
-      console.error('[bounty:create] escrow anchor failed:', escrowErr.message);
-      bounty.escrow = { state: 'held', amountSOL, heldAt: new Date(), mock: true };
+      // In production a failed escrow open must NOT create a fundless bounty.
+      console.error('[bounty:create] escrow open failed:', escrowErr.message);
+      return res.status(502).json({ success: false, message: 'Could not open escrow with the payment provider. Please try again.' });
     }
 
     await bounty.save();
@@ -465,9 +549,43 @@ async function confirmDelivery(req, res) {
       return res.status(409).json({ success: false, message: 'There is no submitted delivery to confirm yet.' });
     }
 
+    // ── Anti-collusion gate: minimum escrow ──
+    // A confirmation MINTS a credential. Without a real, non-trivial escrow a
+    // sponsor could hire an accomplice and confirm a full-weight credential for
+    // free. Require skin in the game — in the bounty's OWN currency, so this
+    // works for a $600 USD bounty as well as a ₦250,000 one. (Demo floor = 0.)
+    const escrowCurrency = bounty.escrow?.currency || bounty.rewardCurrency || 'NGN';
+    const escrowAmount = Number(bounty.escrow?.amount) || 0;
+    const floor = minEscrowFor(escrowCurrency);
+    if (escrowAmount < floor) {
+      return res.status(402).json({
+        success: false,
+        message: `This bounty's escrow (${escrowAmount} ${escrowCurrency}) is below the ${floor} ${escrowCurrency} minimum required to mint a verified credential.`,
+      });
+    }
+
     // 1. Mint an accepted, on-chain-anchored Credential (reuses the exact
     //    pattern from credentialController.issueCredential).
-    const weight = tierToWeight(bounty.requiredTier);
+    //
+    // ── Anti-collusion weighting ──
+    // A single sponsor confirming a single delivery is the "lone attestor"
+    // case — the SAME shape utils/issuanceWeight.js guards. Route it through
+    // computeIssuanceWeight (NOT computeBountyWeight, whose competition-depth
+    // floor would wrongly gut every honest 1:1 hire). An uncorroborated 1:1
+    // confirm is hard-capped at the practitioner band; it can only mint above
+    // that if the student ALREADY has independent proof (prior real deliveries
+    // or a distinct second issuer). One bribed employer, acting alone, cannot
+    // manufacture an Expert/Master credential this way.
+    const sponsorVerified = await isSponsorVerified(bounty.employerId);
+    const { priorDeliveries, independentIssuerCount } =
+      await gatherDeliveryCorroboration(app.studentId, bounty.employerId);
+    const { weight, cappedUncorroborated } = computeIssuanceWeight({
+      // An unverified sponsor is a weak attestor — floor its reputation input.
+      issuerTrustScore: sponsorVerified ? 100 : 55,
+      corroboratingDeliveries: priorDeliveries,
+      independentIssuerCount,
+      requestedTier: bounty.requiredTier,
+    });
     const cred = new Credential({
       title: `${bounty.skillName || bounty.title} — via ${bounty.company} bounty`,
       issuer: bounty.company,
@@ -480,6 +598,14 @@ async function confirmDelivery(req, res) {
       compositeWeight: weight,
       trustTier: assignTier(weight),
       deliveryCount: 1,
+      bounty: {
+        bountyId: bounty._id,
+        sponsorId: bounty.employerId,
+        sponsorVerified,
+        submissionCount: 1,
+        placement: 1,
+        cappedBySponsor: cappedUncorroborated,
+      },
     });
     cred.sha256Hash = computeCredentialHash(cred);
     cred.hash = cred.sha256Hash;
@@ -495,13 +621,28 @@ async function confirmDelivery(req, res) {
     await cred.save();
 
     // 2. Bump delivery stats + recalc CredScore (feeds deliveryScore).
+    //
+    // CORROBORATION-LEAK FIX: deliveryStats.completed is what OTHER issuers
+    // read (via gatherDeliveryCorroboration / issuanceWeight) as proof this
+    // student did real paid work. A verified, escrow-backed 1:1 confirm is
+    // trustworthy enough to count. But an UNVERIFIED sponsor's lone confirm is
+    // exactly the cheap signal a colluder would manufacture — so it mints its
+    // own (practitioner-capped) credential but must NOT hand free corroboration
+    // to a bribed issuer elsewhere. total/earnings still track; completed does
+    // not advance on an unverified, uncorroborated confirm.
     let newCredScore = null;
     try {
       const profile = await ensureStudentProfile(app.studentId);
       profile.deliveryStats.total = (profile.deliveryStats.total || 0) + 1;
-      profile.deliveryStats.completed = (profile.deliveryStats.completed || 0) + 1;
+      const countsAsCorroboration =
+        sponsorVerified || priorDeliveries > 0 || independentIssuerCount > 0;
+      if (countsAsCorroboration) {
+        profile.deliveryStats.completed = (profile.deliveryStats.completed || 0) + 1;
+      }
       profile.deliveryStats.totalEarnedSOL =
         (profile.deliveryStats.totalEarnedSOL || 0) + (bounty.escrow?.amountSOL || 0);
+      addToCurrencyMap(profile.deliveryStats, 'earnedByCurrency',
+        bounty.escrow?.currency || bounty.rewardCurrency, bounty.escrow?.amount || 0);
       if (!profile.verifiedSkills.some((cid) => String(cid) === String(cred._id))) {
         profile.verifiedSkills.push(cred._id);
       }
@@ -515,7 +656,22 @@ async function confirmDelivery(req, res) {
       console.error('[bounty:confirm] credScore recalc failed:', scoreErr.message);
     }
 
-    // 3. Release escrow + close out the lifecycle.
+    // 3. Release escrow to the student via the licensed partner + close out.
+    try {
+      const released = await payments.releaseEscrow({
+        bountyId: bounty._id,
+        studentId: app.studentId,
+        amount: bounty.escrow?.amount || 0,
+        currency: bounty.escrow?.currency || 'NGN',
+        reference: bounty.escrow?.reference,
+      });
+      bounty.escrow.provider = released.provider || bounty.escrow.provider;
+      bounty.escrow.reference = released.reference || bounty.escrow.reference;
+    } catch (payErr) {
+      // Credential is already minted; log the payout issue for reconciliation
+      // rather than failing the whole confirm (the award is the trust event).
+      console.error('[bounty:confirm] escrow release failed:', payErr.message);
+    }
     bounty.escrow.state = 'released';
     bounty.escrow.releasedAt = new Date();
     bounty.status = 'completed';
@@ -563,7 +719,7 @@ async function createDirectTask(req, res) {
   try {
     const {
       studentId, title, description, skill, skillName, skillCategory, skillTags,
-      reward, rewardUSD, rewardSOL, tests, requiredTier, deadline, companyLogo,
+      reward, rewardUSD, rewardSOL, rewardAmount, rewardCurrency, tests, requiredTier, deadline, companyLogo,
     } = req.body || {};
 
     if (!studentId) {
@@ -599,6 +755,8 @@ async function createDirectTask(req, res) {
       ? skillTags
       : String(skillTags || '').split(',').map((t) => t.trim()).filter(Boolean);
     const amountSOL = Number(rewardSOL) || 0;
+    const amount = Number(rewardAmount) || 0;
+    const currency = String(rewardCurrency || 'NGN').toUpperCase();
 
     const bounty = new Bounty({
       employerId: req.user.id,
@@ -614,6 +772,8 @@ async function createDirectTask(req, res) {
       reward: reward || '',
       rewardUSD: Number(rewardUSD) || 0,
       rewardSOL: amountSOL,
+      rewardAmount: amount,
+      rewardCurrency: currency,
       tests: Number(tests) || 0,
       requiredTier: requiredTier || 'learner',
       openTo: `Directly assigned to ${targetUser.name}`,
@@ -623,16 +783,30 @@ async function createDirectTask(req, res) {
       status: 'invited',
     });
 
-    // Hold escrow up front (DEMO_MODE-safe) — a direct offer is money-backed.
+    // Hold escrow up front via the licensed partner — a direct offer is
+    // money-backed. Funds held in trust by the partner, not by CredChain.
     try {
-      const anchor = await anchorHash(`${title}|${req.user.id}|direct|${studentId}`);
+      const held = await payments.openEscrow({
+        bountyId: bounty._id,
+        employerId: req.user.id,
+        amount,
+        currency,
+        reference: `${title}|${req.user.id}|direct|${studentId}`,
+      });
       bounty.escrow = {
-        state: 'held', amountSOL, heldAt: new Date(),
-        txSignature: anchor.signature || undefined, mock: anchor.mock,
+        state: held.state || 'held',
+        amount,
+        currency,
+        amountSOL,
+        provider: held.provider,
+        reference: held.reference,
+        virtualAccount: held.virtualAccount || undefined,
+        heldAt: held.heldAt || new Date(),
+        mock: Boolean(held.mock),
       };
     } catch (escrowErr) {
-      console.error('[bounty:createDirect] escrow anchor failed:', escrowErr.message);
-      bounty.escrow = { state: 'held', amountSOL, heldAt: new Date(), mock: true };
+      console.error('[bounty:createDirect] escrow open failed:', escrowErr.message);
+      return res.status(502).json({ success: false, message: 'Could not open escrow with the payment provider. Please try again.' });
     }
     await bounty.save();
 
@@ -706,10 +880,21 @@ async function respondToDirectTask(req, res) {
       });
     }
 
-    // Decline → refund escrow, close the task.
+    // Decline → refund escrow to the employer via the partner, close the task.
     app.status = 'declined';
     await app.save();
     if (bounty.escrow && bounty.escrow.state === 'held') {
+      try {
+        await payments.refundEscrow({
+          bountyId: bounty._id,
+          employerId: bounty.employerId,
+          amount: bounty.escrow?.amount || 0,
+          currency: bounty.escrow?.currency || 'NGN',
+          reference: bounty.escrow?.reference,
+        });
+      } catch (payErr) {
+        console.error('[bounty:respondDirect] refund failed:', payErr.message);
+      }
       bounty.escrow.state = 'refunded';
       bounty.escrow.releasedAt = new Date();
     }
@@ -820,6 +1005,17 @@ async function cancelBounty(req, res) {
     const hadEntries = (bounty.submissionCount || 0) > 0 || (bounty.applicantCount || 0) > 0;
 
     if (bounty.escrow && bounty.escrow.state === 'held') {
+      try {
+        await payments.refundEscrow({
+          bountyId: bounty._id,
+          employerId: bounty.employerId,
+          amount: bounty.escrow?.amount || 0,
+          currency: bounty.escrow?.currency || 'NGN',
+          reference: bounty.escrow?.reference,
+        });
+      } catch (payErr) {
+        console.error('[bounty:cancel] refund failed:', payErr.message);
+      }
       bounty.escrow.state = 'refunded';
       bounty.escrow.releasedAt = new Date();
     }
@@ -867,15 +1063,19 @@ async function cancelBounty(req, res) {
 // ═════════════════════════════════════════════════════════════
 
 // Shape a prize array from the sponsor's input, normalising ranks/labels.
-function normalisePrizes(prizes) {
+// `currency` is the bounty currency (ISO-4217) so prize display + escrow are
+// consistent with the pool.
+function normalisePrizes(prizes, currency = 'NGN') {
   if (!Array.isArray(prizes)) return [];
+  const cur = String(currency || 'NGN').toUpperCase();
   return prizes
     .map((p, i) => ({
       rank: Number(p.rank) || i + 1,
       label: p.label || `${ordinal(Number(p.rank) || i + 1)} place`,
+      amount: Number(p.amount) || 0,
       amountSOL: Number(p.amountSOL) || 0,
       amountUSD: Number(p.amountUSD) || 0,
-      reward: p.reward || (p.amountUSD ? `$${p.amountUSD}` : `${Number(p.amountSOL) || 0} SOL`),
+      reward: p.reward || (p.amount ? `${Number(p.amount).toLocaleString()} ${cur}` : (p.amountUSD ? `$${p.amountUSD}` : `${Number(p.amountSOL) || 0} SOL`)),
     }))
     .sort((a, b) => a.rank - b.rank);
 }
@@ -929,7 +1129,7 @@ async function createGlobalBounty(req, res) {
   try {
     const {
       title, description, skill, skillName, skillCategory, skillTags,
-      prizes, requiredTier, openTo, deadline, companyLogo, tests,
+      prizes, requiredTier, openTo, deadline, companyLogo, tests, rewardCurrency,
     } = req.body || {};
 
     if (!title || !description) {
@@ -939,13 +1139,15 @@ async function createGlobalBounty(req, res) {
       return res.status(400).json({ success: false, message: 'Invalid requiredTier.' });
     }
 
-    const prizePool = normalisePrizes(prizes);
+    const currency = String(rewardCurrency || 'NGN').toUpperCase();
+    const prizePool = normalisePrizes(prizes, currency);
     if (prizePool.length === 0) {
       return res.status(400).json({ success: false, message: 'A global bounty needs at least one prize.' });
     }
 
     const totalSOL = prizePool.reduce((s, p) => s + (p.amountSOL || 0), 0);
     const totalUSD = prizePool.reduce((s, p) => s + (p.amountUSD || 0), 0);
+    const totalAmount = prizePool.reduce((s, p) => s + (p.amount || 0), 0);
 
     // Resolve sponsor company + verified status.
     let company = req.user.name;
@@ -957,6 +1159,7 @@ async function createGlobalBounty(req, res) {
       employer.sponsorStats = employer.sponsorStats || {};
       employer.sponsorStats.bountiesPosted = (employer.sponsorStats.bountiesPosted || 0) + 1;
       employer.sponsorStats.totalEscrowedSOL = (employer.sponsorStats.totalEscrowedSOL || 0) + totalSOL;
+      addToCurrencyMap(employer.sponsorStats, 'escrowedByCurrency', currency, totalAmount);
       await employer.save();
     } catch { /* non-fatal */ }
 
@@ -964,6 +1167,7 @@ async function createGlobalBounty(req, res) {
       ? skillTags
       : String(skillTags || '').split(',').map((t) => t.trim()).filter(Boolean);
 
+    const poolLabel = totalAmount ? `${totalAmount.toLocaleString()} ${currency} pool` : `${totalSOL} SOL pool`;
     const bounty = new Bounty({
       employerId: req.user.id,
       bountyType: 'global',
@@ -976,9 +1180,11 @@ async function createGlobalBounty(req, res) {
       skillCategory: skillCategory || 'Other',
       skillTags: tags,
       prizes: prizePool,
-      reward: `${totalSOL} SOL pool`,
+      reward: poolLabel,
       rewardUSD: totalUSD,
       rewardSOL: totalSOL,
+      rewardAmount: totalAmount,
+      rewardCurrency: currency,
       tests: Number(tests) || 0,
       requiredTier: requiredTier || 'learner',
       openTo: openTo || 'Open to everyone who qualifies',
@@ -987,25 +1193,37 @@ async function createGlobalBounty(req, res) {
       status: 'open',
     });
 
-    // Hold the ENTIRE pool in escrow up front (DEMO_MODE-safe).
+    // Hold the ENTIRE prize pool in escrow up front with the licensed partner
+    // (held in trust, not by CredChain). A sponsor cannot list a pool they
+    // can't fund — the primary bad-sponsor gate.
     try {
-      const anchor = await anchorHash(`${title}|${req.user.id}|global-escrow|${totalSOL}`);
+      const held = await payments.openEscrow({
+        bountyId: bounty._id,
+        employerId: req.user.id,
+        amount: totalAmount,
+        currency,
+        reference: `${title}|${req.user.id}|global-escrow|${totalAmount || totalSOL}`,
+      });
       bounty.escrow = {
-        state: 'held',
+        state: held.state || 'held',
+        amount: totalAmount,
+        currency,
         amountSOL: totalSOL,
-        heldAt: new Date(),
-        txSignature: anchor.signature || undefined,
-        mock: anchor.mock,
+        provider: held.provider,
+        reference: held.reference,
+        virtualAccount: held.virtualAccount || undefined,
+        heldAt: held.heldAt || new Date(),
+        mock: Boolean(held.mock),
       };
     } catch (escrowErr) {
-      console.error('[bounty:createGlobal] escrow anchor failed:', escrowErr.message);
-      bounty.escrow = { state: 'held', amountSOL: totalSOL, heldAt: new Date(), mock: true };
+      console.error('[bounty:createGlobal] escrow open failed:', escrowErr.message);
+      return res.status(502).json({ success: false, message: 'Could not open escrow with the payment provider. Please try again.' });
     }
 
     await bounty.save();
     return res.status(201).json({
       success: true,
-      message: `Global bounty posted. ${totalSOL} SOL prize pool held in escrow.`,
+      message: `Global bounty posted. ${poolLabel} held in escrow.`,
       bounty: publicBounty(bounty),
     });
   } catch (err) {
@@ -1211,6 +1429,19 @@ async function selectWinners(req, res) {
       app.awardedCredentialId = cred._id;
       await app.save();
 
+      // Pay this winner's prize out of the escrowed pool via the partner.
+      try {
+        await payments.releaseEscrow({
+          bountyId: bounty._id,
+          studentId: app.studentId,
+          amount: prize.amount || 0,
+          currency: bounty.escrow?.currency || bounty.rewardCurrency || 'NGN',
+          reference: `${bounty.escrow?.reference || bounty._id}|prize|rank${rank}`,
+        });
+      } catch (payErr) {
+        console.error('[bounty:selectWinners] prize payout failed:', payErr.message);
+      }
+
       // Bump the winner's stats + CredScore.
       let newCredScore = null;
       try {
@@ -1219,6 +1450,8 @@ async function selectWinners(req, res) {
         profile.deliveryStats.completed = (profile.deliveryStats.completed || 0) + 1;
         profile.deliveryStats.totalEarnedSOL =
           (profile.deliveryStats.totalEarnedSOL || 0) + (prize.amountSOL || 0);
+        addToCurrencyMap(profile.deliveryStats, 'earnedByCurrency',
+          bounty.escrow?.currency || bounty.rewardCurrency, prize.amount || 0);
         if (!profile.verifiedSkills.some((cid) => String(cid) === String(cred._id))) {
           profile.verifiedSkills.push(cred._id);
         }
@@ -1299,6 +1532,17 @@ async function autoReleaseStale(_req, res) {
 
     const released = [];
     for (const bounty of stale) {
+      try {
+        await payments.refundEscrow({
+          bountyId: bounty._id,
+          employerId: bounty.employerId,
+          amount: bounty.escrow?.amount || 0,
+          currency: bounty.escrow?.currency || 'NGN',
+          reference: bounty.escrow?.reference,
+        });
+      } catch (payErr) {
+        console.error('[bounty:autoRelease] refund failed:', payErr.message);
+      }
       bounty.escrow.state = 'refunded';
       bounty.escrow.releasedAt = now;
       bounty.status = 'cancelled';

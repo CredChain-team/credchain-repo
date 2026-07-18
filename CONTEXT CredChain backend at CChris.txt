@@ -1,0 +1,50 @@
+CONTEXT: CredChain backend at C:\Chris Stuff\CredChain\backend (branch ui-rewrite,
+  uncommitted). Launching in Nigeria, scaling globally. Recent work added: anti-collusion
+  fixes, a country-routed verification seam (services/verificationRouter.js), a licensed
+  fiat-escrow seam (services/payments.js), a rate limiter, and a currency abstraction
+  (generic {amount, currency}, default NGN). DEMO_MODE=true keeps everything simulated/working;
+  production needs real keys. No test runner in the repo. Read scratch/REAL-WORLD-PLAN.md first.
+
+  TASKS REMAINING:
+
+  1. FINISH DOCS (quick):
+     - Update backend/.env.example: replace MIN_BOUNTY_ESCROW_NAIRA with the per-currency
+       vars the code now reads (MIN_BOUNTY_ESCROW_NGN/USD/GBP/EUR/KES/GHS/ZAR).
+     - Update scratch/REAL-WORLD-PLAN.md to record the currency refactor as done.
+
+  2. VENDOR INTEGRATIONS (need my API keys — implement the adapters, they currently throw
+     "not wired yet" by design):
+     - CAC (L1 entity): implement Dojah/VerifyMe/QoreID RC-number lookup in verificationRouter.verifyEntity
+     - Smile ID (L3 identity): implement synchronous NIN + SmartSelfie + AML in verificationRouter.verifyIdentity
+     - WAEC (L4 university): implement confirmation flow in verificationRouter.crossMatchRegistry
+     - Payment partner (escrow): implement one adapter (Flutterwave/Korapay/Moniepoint/Providus)
+       in services/payments.js — MUST be an escrow/trust product, not collections.
+
+  3. REMAINING CODE HARDENING:
+     - Common-ownership check in gatherCorroboration (bountyController.js) using CAC RC number /
+       director list, so two issuers owned by one person don't count as "independent."
+     - Default issuer `country` from the issuer's actual profile/signup instead of hardcoded 'NG'.
+     - Expand isConsumerEmail (utils/email.js) with regional providers (naver.com, qq.com, mail.ru, etc.)
+
+  4. CREDENTIAL INTEROP (global credibility):
+     - Emit credentials as W3C Verifiable Credentials / Open Badges 3.0 (issuer-signed,
+       offline-verifiable), revocation via Bitstring Status List. Add to the credential schema/emit path.
+
+  5. RE-VERIFICATION SWEEP:
+     - Add a cron/job that flips isVerifiedIssuer=false when verifiedUntil has passed (no permanent badges).
+
+  6. FRONTEND (separate — the API changed):
+     - Bounty create forms must send rewardAmount + rewardCurrency (not rewardNaira).
+     - Issuer KYC form must send a consent checkbox (consent:true) + country.
+
+  7. VERIFY END-TO-END: run the actual server (npm start), walk the issuer funnel
+     (register → verify-domain → kyc → cross-match) and a bounty create→confirm in a
+     non-NGN currency, confirm the credential mints. Static tests passed but the live flow
+     hasn't been driven.
+
+  8. LEGAL (not code, my action): CAC incorporation, NDPC registration + DPO, confirm
+     payment partner holds funds in trust. Keep MVP anchoring-only (no crypto custody).
+
+  ---
+  Want me to knock out task 1 (the two doc updates) right now before you go, since they're 2 minutes and leave the repo
+  consistent? Or stop here?

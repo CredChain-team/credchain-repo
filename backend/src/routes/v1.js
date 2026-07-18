@@ -20,6 +20,13 @@ const {
   enforceVerifiedIssuer,
 } = require('../middleware/auth');
 
+const { rateLimit } = require('../middleware/rateLimit');
+
+// Limiters for endpoints that fire outbound/paid work (verification lookups,
+// escrow opens) — throttle abuse without a new dependency.
+const verifyLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, keyPrefix: 'verify' });
+const escrowLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 30, keyPrefix: 'escrow' });
+
 const issuer = require('../controllers/issuerController');
 const student = require('../controllers/studentController');
 const bulk = require('../controllers/bulkController');
@@ -70,9 +77,9 @@ router.post('/auth/demo', auth.demoLogin);
 router.get('/badge/:credentialId', badge.getBadge);
 
 // ── System 3: Issuer verification funnel ─────────────────────
-router.post('/issuer/register-step-one', requireAuth, requireRole('issuer'), issuer.registerIssuerStepOne);
-router.post('/issuer/verify-domain', requireAuth, requireRole('issuer'), issuer.verifyDomainOwnership);
-router.post('/issuer/kyc/submit', requireAuth, requireRole('issuer'), issuer.submitKyc);
+router.post('/issuer/register-step-one', requireAuth, requireRole('issuer'), verifyLimiter, issuer.registerIssuerStepOne);
+router.post('/issuer/verify-domain', requireAuth, requireRole('issuer'), verifyLimiter, issuer.verifyDomainOwnership);
+router.post('/issuer/kyc/submit', requireAuth, requireRole('issuer'), verifyLimiter, issuer.submitKyc);
 router.post('/issuer/kyc/webhook', issuer.kycWebhook); // machine webhook (shared secret)
 router.post('/issuer/registry-cross-match', requireAuth, requireAdmin, issuer.registryCrossMatch);
 router.get('/admin/issuers', requireAuth, requireAdmin, issuer.listIssuersForAdmin);
@@ -127,16 +134,16 @@ router.get('/talent/search', requireAuth, student.searchTalent);
 // /direct, /auto-release) MUST precede the /:id param routes below, or
 // Express matches the literal segment as an :id.
 router.get('/bounties', requireAuth, bounty.listOpenBounties);
-router.post('/bounties', requireAuth, requireRole('employer'), bounty.createBounty);
+router.post('/bounties', requireAuth, requireRole('employer'), escrowLimiter, bounty.createBounty);
 router.get('/bounties/mine', requireAuth, requireRole('employer'), bounty.listMyBounties);
 router.get('/bounties/applications/mine', requireAuth, requireRole('student'), bounty.listMyApplications);
 
 // ── Direct "live task" assignment (employer → specific student) ──
-router.post('/bounties/direct', requireAuth, requireRole('employer'), bounty.createDirectTask);
+router.post('/bounties/direct', requireAuth, requireRole('employer'), escrowLimiter, bounty.createDirectTask);
 
 // ── Global (open competition) bounties + leaderboard ──
 router.get('/bounties/global', requireAuth, bounty.listGlobalBounties);
-router.post('/bounties/global', requireAuth, requireRole('employer'), bounty.createGlobalBounty);
+router.post('/bounties/global', requireAuth, requireRole('employer'), escrowLimiter, bounty.createGlobalBounty);
 router.get('/bounties/leaderboard', requireAuth, bounty.leaderboard);
 router.post('/bounties/auto-release', requireAuth, requireAdmin, bounty.autoReleaseStale);
 

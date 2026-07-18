@@ -39,6 +39,8 @@ const employerProfileSchema = new mongoose.Schema(
       cancelledWithEntries:  { type: Number, default: 0 }, // cancelled after submissions arrived
       autoReleased:          { type: Number, default: 0 }, // went silent → escrow force-released
       totalEscrowedSOL:      { type: Number, default: 0 },
+      // Per-currency escrow totals (ISO-4217 code → total). Scales to any market.
+      escrowedByCurrency:    { type: Map, of: Number, default: {} },
       // Rolling rating students gave this employer after a confirmed task.
       // Marketplace reputation only — never feeds any student's CredScore.
       ratingAvg:             { type: Number, default: 0 },

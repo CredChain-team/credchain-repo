@@ -111,6 +111,9 @@ const studentProfileSchema = new mongoose.Schema(
       disputed:         { type: Number, default: 0 },
       confirmedAgainst: { type: Number, default: 0 },
       totalEarnedSOL:   { type: Number, default: 0 },
+      // Per-currency earnings (ISO-4217 code → total). Scales to any market;
+      // e.g. { NGN: 250000, USD: 600 }. Nigeria launch just populates NGN.
+      earnedByCurrency: { type: Map, of: Number, default: {} },
     },
 
     // ── Skill Discovery / Talent Search ───────────────────────────────
